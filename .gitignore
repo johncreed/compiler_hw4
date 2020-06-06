@@ -1,0 +1,14 @@
+.DS_Store
+
+*.swp
+*.o
+
+tags
+*.gv
+*.png
+.vim-bookmarks
+
+parser.*
+parser
+lex.yy.c
+a.out
