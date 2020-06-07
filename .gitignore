@@ -8,7 +8,8 @@ tags
 *.png
 .vim-bookmarks
 
-parser.*
 parser
+parser.tab.*
+parser.output
 lex.yy.c
 a.out
