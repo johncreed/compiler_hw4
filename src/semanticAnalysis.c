@@ -1,7 +1,7 @@
 #include "armGenerator.h"
 #include "header.h"
-#include "symbolTable.h"
 #include "registerManager.h"
+#include "symbolTable.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

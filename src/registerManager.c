@@ -5,16 +5,16 @@
 
 int ALLOCATED_ARRAY[REGISTER_SIZE];
 
-void allocate(AST_NODE *node, REGISTER_TYPE type, int registerNumber){
+void allocate(AST_NODE *node, REGISTER_TYPE type, int registerNumber) {
     ALLOCATED_ARRAY[registerNumber] = 1;
     node->registerNumber = registerNumber;
-    switch(type){
-        case R_32:
-            node->registerType = 'w';
-            break;
-        case R_64:
-            node->registerType = 'x';
-            break;
+    switch (type) {
+    case R_32:
+        node->registerType = 'w';
+        break;
+    case R_64:
+        node->registerType = 'x';
+        break;
     }
 }
 
@@ -25,31 +25,31 @@ void initRegister() {
 
 void allocR0Register(AST_NODE *node, REGISTER_TYPE type) {
     for (int i = REGISTER0_BEGIN; i < REGISTER0_END; i++)
-        if (ALLOCATED_ARRAY[i] == 0){
-           allocate(node, type, i);
-           break;
+        if (ALLOCATED_ARRAY[i] == 0) {
+            allocate(node, type, i);
+            break;
         }
 }
 
 void allocR1Register(AST_NODE *node, REGISTER_TYPE type) {
     for (int i = REGISTER1_BEGIN; i < REGISTER1_END; i++)
-        if (ALLOCATED_ARRAY[i] == 0){
-           allocate(node, type, i);
-           break;
+        if (ALLOCATED_ARRAY[i] == 0) {
+            allocate(node, type, i);
+            break;
         }
 }
 
 void allocR2Register(AST_NODE *node, REGISTER_TYPE type) {
     for (int i = REGISTER2_BEGIN; i < REGISTER2_END; i++)
-        if (ALLOCATED_ARRAY[i] == 0){
-           allocate(node, type, i);
-           break;
+        if (ALLOCATED_ARRAY[i] == 0) {
+            allocate(node, type, i);
+            break;
         }
 }
 
-int allocR2(){
+int allocR2() {
     for (int i = REGISTER2_BEGIN; i < REGISTER2_END; i++)
-        if (ALLOCATED_ARRAY[i] == 0){
+        if (ALLOCATED_ARRAY[i] == 0) {
             ALLOCATED_ARRAY[i] = 1;
             return i;
         }
@@ -60,7 +60,4 @@ void freeRegister(AST_NODE *node) {
     node->registerNumber = -1;
 }
 
-int freeR2(int i) {
-    ALLOCATED_ARRAY[i] = 0;
-}
-
+int freeR2(int i) { ALLOCATED_ARRAY[i] = 0; }
