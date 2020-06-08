@@ -3,6 +3,11 @@
 
 #define MAX_ARRAY_DIMENSION 10
 
+typedef enum REGISTER_TYPE{
+    R_32,
+    R_64
+} REGISTER_TYPE;
+
 typedef enum DATA_TYPE
 {
     INT_TYPE,
@@ -158,6 +163,11 @@ struct AST_NODE {
 	AST_TYPE nodeType;
     DATA_TYPE dataType;
 	int linenumber;
+
+    char registerType;
+    int registerNumber;
+    int accessOffset;
+
 	union {
         IdentifierSemanticValue identifierSemanticValue;
         STMTSemanticValue stmtSemanticValue;

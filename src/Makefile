@@ -1,5 +1,5 @@
 TARGET = parser
-OBJECT = parser.tab.c parser.tab.o lex.yy.c alloc.o functions.o semanticAnalysis.o symbolTable.o armGenerator.o
+OBJECT = parser.tab.c parser.tab.o lex.yy.c alloc.o functions.o semanticAnalysis.o symbolTable.o armGenerator.o registerManager.o
 OUTPUT = parser.output parser.tab.h
 CC = gcc -g
 LEX = flex
@@ -7,7 +7,7 @@ YACC = bison -v
 YACCFLAG = -d
 LIBS = -lfl 
 
-parser: parser.tab.o alloc.o functions.o symbolTable.o semanticAnalysis.o armGenerator.o 
+parser: parser.tab.o alloc.o functions.o symbolTable.o semanticAnalysis.o armGenerator.o registerManager.o 
 	$(CC) -o $(TARGET) $^ $(LIBS)
 
 parser.tab.o: parser.tab.c lex.yy.c alloc.o functions.c symbolTable.o semanticAnalysis.o
@@ -16,8 +16,11 @@ parser.tab.o: parser.tab.c lex.yy.c alloc.o functions.c symbolTable.o semanticAn
 semanticAnalysis.o: semanticAnalysis.c symbolTable.o armGenerator.o
 	$(CC) -c semanticAnalysis.c 
 
-armGenerator.o: armGenerator.c
+armGenerator.o: armGenerator.c registerManager.o
 	$(CC) -c armGenerator.c
+
+registerManager.o: registerManager.c 
+	$(CC) -c registerManager.c
 
 symbolTable.o: symbolTable.c
 	$(CC) -c symbolTable.c
@@ -35,5 +38,5 @@ functions.o: functions.c
 	$(CC) -c functions.c
 
 clean:
-	rm -f $(TARGET) $(OBJECT) $(OUTPUT)
+	rm -f $(TARGET) $(OBJECT) $(OUTPUT) *.o
 

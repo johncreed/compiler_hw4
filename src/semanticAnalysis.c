@@ -1,6 +1,7 @@
 #include "armGenerator.h"
 #include "header.h"
 #include "symbolTable.h"
+#include "registerManager.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -195,6 +196,7 @@ void printErrorMsg(AST_NODE *node, ErrorMsgKind errorMsgKind) {
 }
 
 void semanticAnalysis(AST_NODE *root) {
+    initRegister();
     processProgramNode(root);
     return;
 }
