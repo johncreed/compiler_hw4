@@ -18,4 +18,5 @@ void visitDeclareIdList(AST_NODE *declarationNode,
 void visitAssignmentStmt(AST_NODE *assignmentNode); 
 void visitVariableLValue(AST_NODE *idNode); 
 void visitExprRelatedNode(AST_NODE *exprRelatedNode); 
+void visitExprNode(AST_NODE *exprNode);
 #endif

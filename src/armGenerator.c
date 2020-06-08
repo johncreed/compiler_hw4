@@ -1,6 +1,4 @@
 #include "armGenerator.h"
-#include "header.h"
-#include "symbolTable.h"
 #include "registerManager.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,20 +6,36 @@
 
 int DEBUG = 1;
 
+int aligned_size(int size, int aligned){
+    if( size % aligned > 0){
+        size = (size / aligned)*aligned + aligned;
+    }
+    return size;
+}
+
 // ARM routine
 void storeLinkerAndSPRegister(int size) {
-    printf("\tstp x29, x30, [sp, -%d]!\n", size);
+    printf("\tstp x29, x30, [sp, -%d]!\n", aligned_size(size, 8));
     printf("\tadd x29, sp, 0\n");
 }
 
 void loadLinkerAndSPRegister(int size) {
-    printf("\tldp x29, x30, [sp], %d\n", size);
+    printf("\tldp x29, x30, [sp], %d\n", aligned_size(size, 8));
     printf("\tret\n");
 }
 
 void MOV(AST_NODE *node, int val){
     printf("\tmov w%d, %d\n", node->registerNumber, val);
 }
+
+void MOV_X(AST_NODE *node, int val){
+    printf("\tmov x%d, %d\n", node->registerNumber, val);
+}
+
+void MOV_X_RC(AST_NODE *node, int val){
+    printf("\tmov x%d, %d\n", node->registerNumber, val);
+}
+
 
 void ADD_RRC(AST_NODE *node_a, AST_NODE *node_b, int val){
     printf("\tadd w%d, w%d, %d\n", node_a->registerNumber, node_b->registerNumber, val);
@@ -32,7 +46,15 @@ void MUL_RRR(AST_NODE *node_a, AST_NODE *node_b, AST_NODE *node_c){
 }
 
 void STRSP(AST_NODE *node_a, AST_NODE *node_b){
-    printf("\tstr w%d [sp, w%d]\n", node_a->registerNumber, node_b->registerNumber);
+    printf("\tstr w%d, [sp, x%d]\n", node_a->registerNumber, node_b->registerNumber);
+}
+
+void SXTW(AST_NODE *node){
+    printf("\tsxtw x%d, w%d\n", node->registerNumber, node->registerNumber);
+}
+
+void LSL(AST_NODE *node, int size){
+    printf("\tlsl w%d, w%d, %d\n", node->registerNumber, node->registerNumber, size);
 }
 
 int getOffset(char *symbolName) {
@@ -209,9 +231,7 @@ void visitGeneralNode(AST_NODE *node) {
 void visitConstValueNode(AST_NODE *constValueNode) {
     switch (constValueNode->semantic_value.const1->const_type) {
     case INTEGERC:
-        constValueNode->dataType = INT_TYPE;
-        constValueNode->semantic_value.exprSemanticValue.constEvalValue.iValue =
-            constValueNode->semantic_value.const1->const_u.intval;
+        MOV(constValueNode, constValueNode->semantic_value.exprSemanticValue.constEvalValue.iValue);
         break;
     /*case FLOATC:
         constValueNode->dataType = FLOAT_TYPE;
@@ -230,9 +250,23 @@ void visitConstValueNode(AST_NODE *constValueNode) {
     }
 }
 
+void visitExprNode(AST_NODE *exprNode) {
+    if(exprNode->semantic_value.exprSemanticValue.kind == BINARY_OPERATION ){
+        AST_NODE *leftOp = exprNode->child;
+        AST_NODE *rightOp = leftOp->rightSibling;
+        visitExprRelatedNode(leftOp);
+        visitExprRelatedNode(rightOp);
+    }else {
+        //case UNARY_OPERATION:
+        AST_NODE *operand = exprNode->child;
+        visitExprRelatedNode(operand);
+    }
+}
+
 void visitExprRelatedNode(AST_NODE *exprRelatedNode) {
     switch (exprRelatedNode->nodeType) {
-    /*case EXPR_NODE:
+    /*
+    case EXPR_NODE:
         processExprNode(exprRelatedNode);
         break;
     case STMT_NODE:
@@ -242,9 +276,11 @@ void visitExprRelatedNode(AST_NODE *exprRelatedNode) {
     case IDENTIFIER_NODE:
         processVariableRValue(exprRelatedNode);
         break;
+        */
     case CONST_VALUE_NODE:
         visitConstValueNode(exprRelatedNode);
         break;
+        /*
     default:
         printf("Unhandle case in void processExprRelatedNode(AST_NODE* "
                "exprRelatedNode)\n");
@@ -265,15 +301,17 @@ void visitVariableLValue(AST_NODE *idNode) {
             MOV(idNode, 1);
             AST_NODE *traverseDimList = idNode->child;
             while (traverseDimList) {
-                allocR2Register(traverseDimList, R_32);
+                allocR2Register(traverseDimList, R_64);
                 visitExprRelatedNode(traverseDimList);
                 MUL_RRR(idNode, idNode, traverseDimList);
                 freeRegister(traverseDimList);
                 traverseDimList = traverseDimList->rightSibling;
             }
+            LSL(idNode, 2);
             ADD_RRC(idNode, idNode, idNode->accessOffset);
             break;
     }
+    SXTW(idNode);
 }
 
 void visitAssignmentStmt(AST_NODE *assignmentNode) {
@@ -284,7 +322,7 @@ void visitAssignmentStmt(AST_NODE *assignmentNode) {
     if(DEBUG > 0){
         fprintf(stderr, "Load offset to memory.\n");
     }
-    allocR2Register(leftOp, R_32);
+    allocR2Register(leftOp, R_64);
     visitVariableLValue(leftOp);
     
     // Genercode for expr
@@ -292,7 +330,7 @@ void visitAssignmentStmt(AST_NODE *assignmentNode) {
         fprintf(stderr, "Load expr result to memory.\n");
     }
     allocR2Register(rightOp, R_32);
-    // processExprRelatedNode(rightOp);
+    visitExprRelatedNode(rightOp);
 
     switch(leftOp->dataType){
         case INT_TYPE:
@@ -418,13 +456,15 @@ void visitFunctionCall(AST_NODE *functionCallNode) {
 void visitWriteFunction(AST_NODE *functionCallNode) {
     AST_NODE *functionIDNode = functionCallNode->child;
     AST_NODE *actualParameterList = functionIDNode->rightSibling;
-    visitGeneralNode(actualParameterList);
+    //visitGeneralNode(actualParameterList);
     AST_NODE *actualParameter = actualParameterList->child;
+    
+    allocR2Register(actualParameter, R_64);
+    visitVariableLValue(actualParameter);
 
     switch (actualParameter->dataType) {
     case INT_TYPE:
-        printf("\tmov x0, %d\n",
-               actualParameter->semantic_value.const1->const_u);
+        printf("\tldr x0, [sp, x%d]\n", actualParameter->registerNumber);
         printf("\tbl _write_int\n");
         break;
     case FLOAT_TYPE:
@@ -440,4 +480,5 @@ void visitWriteFunction(AST_NODE *functionCallNode) {
     default:
         break;
     }
+    freeRegister(actualParameter);
 }

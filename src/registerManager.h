@@ -21,5 +21,7 @@ void initRegister();
 void allocR0Register(AST_NODE *node, REGISTER_TYPE type);
 void allocR1Register(AST_NODE *node, REGISTER_TYPE type);
 void allocR2Register(AST_NODE *node, REGISTER_TYPE type);
+int allocR2();
 void freeRegister(AST_NODE *node);
+int freeR2(int i); 
 #endif

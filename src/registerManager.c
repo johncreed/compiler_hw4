@@ -47,8 +47,20 @@ void allocR2Register(AST_NODE *node, REGISTER_TYPE type) {
         }
 }
 
+int allocR2(){
+    for (int i = REGISTER2_BEGIN; i < REGISTER2_END; i++)
+        if (ALLOCATED_ARRAY[i] == 0){
+            ALLOCATED_ARRAY[i] = 1;
+            return i;
+        }
+}
+
 void freeRegister(AST_NODE *node) {
     ALLOCATED_ARRAY[node->registerNumber] = 0;
     node->registerNumber = -1;
+}
+
+int freeR2(int i) {
+    ALLOCATED_ARRAY[i] = 0;
 }
 
