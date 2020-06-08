@@ -1,6 +1,6 @@
+#include "armGenerator.h"
 #include "header.h"
 #include "symbolTable.h"
-#include "armGenerator.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,17 +18,17 @@ void loadLinkerAndSPRegister() {
     printf("\tret\n");
 }
 
-int getOffset(char* symbolName){
+int getOffset(char *symbolName) {
     SymbolTableEntry *entry = retrieveSymbol(symbolName);
 
-    if(DEBUG > 0){
-        if(entry == NULL){
+    if (DEBUG > 0) {
+        if (entry == NULL) {
             fprintf(stderr, "entry  is null %s\n", symbolName);
             exit(1);
             return 0;
-        }
-        else{
-            fprintf(stderr, "Get id: %s offset: %d\n", symbolName, entry->attribute->offset);
+        } else {
+            fprintf(stderr, "Get id: %s offset: %d\n", symbolName,
+                    entry->attribute->offset);
             return entry->attribute->offset;
         }
     }
@@ -45,11 +45,9 @@ void visitProgramNode(AST_NODE *programNode) {
     while (traverseDeclaration) {
         if (traverseDeclaration->nodeType == VARIABLE_DECL_LIST_NODE) {
             visitGeneralNode(traverseDeclaration);
-        } 
-        else if(traverseDeclaration->nodeType == DECLARATION_NODE) {
+        } else if (traverseDeclaration->nodeType == DECLARATION_NODE) {
             visitDeclarationNode(traverseDeclaration);
-        }
-        else{
+        } else {
             fprintf(stderr, "Node not match in visitProgramNode\n");
             exit(1);
         }
@@ -64,24 +62,25 @@ void visitProgramNode(AST_NODE *programNode) {
 }
 
 void visitDeclareIdList(AST_NODE *declarationNode,
-                   SymbolAttributeKind isVariableOrTypeAttribute,
-                   int ignoreArrayFirstDimSize) {
+                        SymbolAttributeKind isVariableOrTypeAttribute,
+                        int ignoreArrayFirstDimSize) {
     AST_NODE *typeNode = declarationNode->child;
     AST_NODE *traverseIDList = typeNode->rightSibling;
     while (traverseIDList) {
-        if(DEBUG > 0){
-            int offset = traverseIDList->semantic_value.identifierSemanticValue.offset;
-            char* name = traverseIDList->semantic_value.identifierSemanticValue.identifierName;
+        if (DEBUG > 0) {
+            int offset =
+                traverseIDList->semantic_value.identifierSemanticValue.offset;
+            char *name = traverseIDList->semantic_value.identifierSemanticValue
+                             .identifierName;
             getOffset(name);
         }
-        switch (
-            traverseIDList->semantic_value.identifierSemanticValue.kind) {
+        switch (traverseIDList->semantic_value.identifierSemanticValue.kind) {
         case NORMAL_ID:
             break;
         case ARRAY_ID:
             break;
         case WITH_INIT_ID:
-            // TODO assign value to sp + offset 
+            // TODO assign value to sp + offset
             break;
         default:
             break;
@@ -94,17 +93,17 @@ void visitDeclarationNode(AST_NODE *declarationNode) {
     AST_NODE *typeNode = declarationNode->child;
 
     switch (declarationNode->semantic_value.declSemanticValue.kind) {
-        case VARIABLE_DECL:
-            visitDeclareIdList(declarationNode, VARIABLE_ATTRIBUTE, 0);
-            break;
-        /*
-        case TYPE_DECL:
-            declareIdList(declarationNode, TYPE_ATTRIBUTE, 0);
-            break;
-        */
-        case FUNCTION_DECL:
-            visitDeclareFunction(declarationNode);
-            break;
+    case VARIABLE_DECL:
+        visitDeclareIdList(declarationNode, VARIABLE_ATTRIBUTE, 0);
+        break;
+    /*
+    case TYPE_DECL:
+        declareIdList(declarationNode, TYPE_ATTRIBUTE, 0);
+        break;
+    */
+    case FUNCTION_DECL:
+        visitDeclareFunction(declarationNode);
+        break;
         /*
         case FUNCTION_PARAMETER_DECL:
             declareIdList(declarationNode, VARIABLE_ATTRIBUTE, 1);
@@ -123,7 +122,8 @@ void visitDeclareFunction(AST_NODE *declarationNode) {
     printf(
         "_start_%s:\n",
         functionNameID->semantic_value.identifierSemanticValue.identifierName);
-    storeLinkerAndSPRegister(declarationNode->semantic_value.declSemanticValue.frameSize);
+    storeLinkerAndSPRegister(
+        declarationNode->semantic_value.declSemanticValue.frameSize);
 
     /*TODO bonus
      * parse parameter
