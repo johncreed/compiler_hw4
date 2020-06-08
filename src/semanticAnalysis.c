@@ -1,5 +1,6 @@
 #include "header.h"
 #include "symbolTable.h"
+#include "armGenerator.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,6 +37,9 @@ void processConstValueNode(AST_NODE *constValueNode);
 void getExprOrConstValue(AST_NODE *exprOrConstNode, int *iValue, float *fValue);
 void evaluateExprValue(AST_NODE *exprNode);
 
+int FRAME_SIZE;
+void setIdentificationOffset(AST_NODE *idNode, SymbolAttribute *attribute, int sizeToAllocated);
+
 typedef enum ErrorMsgKind {
     SYMBOL_IS_NOT_TYPE,
     SYMBOL_REDECLARE,
@@ -62,6 +66,12 @@ typedef enum ErrorMsgKind {
     PASS_ARRAY_TO_SCALAR,
     PASS_SCALAR_TO_ARRAY
 } ErrorMsgKind;
+
+void setIdentificationOffset(AST_NODE *idNode, SymbolAttribute *attribute, int sizeToAllocated){
+    idNode->semantic_value.identifierSemanticValue.offset = FRAME_SIZE;
+    attribute->offset = FRAME_SIZE;
+    FRAME_SIZE += sizeToAllocated;
+}
 
 void printErrorMsgSpecial(AST_NODE *node1, char *name2,
                           ErrorMsgKind errorMsgKind) {
@@ -272,6 +282,9 @@ void declareIdList(AST_NODE *declarationNode,
     TypeDescriptor *typeDescriptorOfTypeNode =
         typeNode->semantic_value.identifierSemanticValue.symbolTableEntry
             ->attribute->attr.typeDescriptor;
+    const int type_size = 
+        typeNode->semantic_value.identifierSemanticValue.symbolTableEntry
+            ->attribute->attr.typeDescriptor->type_size;
     if ((isVariableOrTypeAttribute == VARIABLE_ATTRIBUTE) &&
         (typeDescriptorOfTypeNode->kind == SCALAR_TYPE_DESCRIPTOR) &&
         (typeDescriptorOfTypeNode->properties.dataType == VOID_TYPE)) {
@@ -290,12 +303,15 @@ void declareIdList(AST_NODE *declarationNode,
             SymbolAttribute *attribute =
                 (SymbolAttribute *)malloc(sizeof(SymbolAttribute));
             attribute->attributeKind = isVariableOrTypeAttribute;
+            int sizeToAllocated = 0;
             switch (
                 traverseIDList->semantic_value.identifierSemanticValue.kind) {
             case NORMAL_ID:
                 attribute->attr.typeDescriptor =
                     typeNode->semantic_value.identifierSemanticValue
                         .symbolTableEntry->attribute->attr.typeDescriptor;
+                sizeToAllocated = type_size;
+                setIdentificationOffset(traverseIDList, attribute, sizeToAllocated);
                 break;
             case ARRAY_ID:
                 if ((isVariableOrTypeAttribute == TYPE_ATTRIBUTE) &&
@@ -325,6 +341,9 @@ void declareIdList(AST_NODE *declarationNode,
                         typeNode->semantic_value.identifierSemanticValue
                             .symbolTableEntry->attribute->attr.typeDescriptor
                             ->properties.dataType;
+                    sizeToAllocated = type_size * attribute->attr.typeDescriptor->
+                        properties.arrayProperties.total_size;
+                    setIdentificationOffset(traverseIDList, attribute, sizeToAllocated);
                 } else if (typeNode->semantic_value.identifierSemanticValue
                                .symbolTableEntry->attribute->attr
                                .typeDescriptor->kind == ARRAY_TYPE_DESCRIPTOR) {
@@ -363,6 +382,11 @@ void declareIdList(AST_NODE *declarationNode,
                                     .symbolTableEntry->attribute->attr
                                     .typeDescriptor->properties.arrayProperties
                                     .sizeInEachDimension[indexType];
+                        /* TODO set offset for array declare i.e. int[2] a[2]
+                        sizeToAllocated = type_size * attribute->attr.typeDescriptor->
+                        properties.arrayProperties.total_size;
+                        setIdentificationOffset(traverseIDList, attribute, sizeToAllocated);
+                        */
                         }
                     }
                 }
@@ -378,6 +402,11 @@ void declareIdList(AST_NODE *declarationNode,
                     attribute->attr.typeDescriptor =
                         typeNode->semantic_value.identifierSemanticValue
                             .symbolTableEntry->attribute->attr.typeDescriptor;
+                        /* TODO set offset for array 
+                        sizeToAllocated = type_size * attribute->attr.typeDescriptor->
+                        properties.arrayProperties.total_size;
+                        setIdentificationOffset(traverseIDList, attribute, sizeToAllocated);
+                        */
                 }
                 break;
             default:
@@ -1193,6 +1222,7 @@ void processDeclDimList(AST_NODE *idNode, TypeDescriptor *typeDescriptor,
         ++dimension;
         traverseDim = traverseDim->rightSibling;
     }
+    typeDescriptor->properties.arrayProperties.total_size = 1;
     while (traverseDim) {
         if (dimension >= MAX_ARRAY_DIMENSION) {
             printErrorMsg(variableDeclDimList->parent,
@@ -1217,6 +1247,7 @@ void processDeclDimList(AST_NODE *idNode, TypeDescriptor *typeDescriptor,
                 .sizeInEachDimension[dimension] =
                 traverseDim->semantic_value.exprSemanticValue.constEvalValue
                     .iValue;
+            typeDescriptor->properties.arrayProperties.total_size *= typeDescriptor->properties.arrayProperties.sizeInEachDimension[dimension];
         }
 
         ++dimension;
@@ -1261,6 +1292,7 @@ void declareFunction(AST_NODE *declarationNode) {
         enterFunctionNameToSymbolTable = 1;
     }
 
+    FRAME_SIZE = 16;
     openScope();
 
     AST_NODE *parameterListNode = functionNameID->rightSibling;
@@ -1333,6 +1365,8 @@ void declareFunction(AST_NODE *declarationNode) {
         }
     }
 
+    declarationNode->semantic_value.declSemanticValue.frameSize = FRAME_SIZE;
+    visitDeclareFunction(declarationNode);
     closeScope();
 
     if (errorOccur && enterFunctionNameToSymbolTable) {

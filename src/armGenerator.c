@@ -1,26 +1,38 @@
 #include "header.h"
+#include "symbolTable.h"
+#include "armGenerator.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-// Node traversal
-void visitProgramNode(AST_NODE *programNode);
-void visitDeclarationNode(AST_NODE *declarationNode);
-void visitDeclareFunction(AST_NODE *declarationNode);
-void visitGeneralNode(AST_NODE *node);
-void visitStmtNode(AST_NODE *stmtNode);
-void visitFunctionCall(AST_NODE *functionCallNode);
-void visitWriteFunction(AST_NODE *functionCallNode);
+int DEBUG = 1;
 
 // ARM routine
-void storeLinkerAndSPRegister() {
-    printf("\tstp x29, x30, [sp, -16]!\n");
+void storeLinkerAndSPRegister(int size) {
+    printf("\tstp x29, x30, [sp, -%d]!\n", size);
     printf("\tadd x29, sp, 0\n");
 }
 
 void loadLinkerAndSPRegister() {
     printf("\tldp x29, x30, [sp], 16\n");
     printf("\tret\n");
+}
+
+int getOffset(char* symbolName){
+    SymbolTableEntry *entry = retrieveSymbol(symbolName);
+
+    if(DEBUG > 0){
+        if(entry == NULL){
+            fprintf(stderr, "entry  is null %s\n", symbolName);
+            exit(1);
+            return 0;
+        }
+        else{
+            fprintf(stderr, "Get id: %s offset: %d\n", symbolName, entry->attribute->offset);
+            return entry->attribute->offset;
+        }
+    }
+    return entry->attribute->offset;
 }
 
 void armGenerator(AST_NODE *root) {
@@ -32,10 +44,14 @@ void visitProgramNode(AST_NODE *programNode) {
     AST_NODE *traverseDeclaration = programNode->child;
     while (traverseDeclaration) {
         if (traverseDeclaration->nodeType == VARIABLE_DECL_LIST_NODE) {
-            // TODO visitGeneralNode(traverseDeclaration);
-        } else {
-            // function declaration
+            visitGeneralNode(traverseDeclaration);
+        } 
+        else if(traverseDeclaration->nodeType == DECLARATION_NODE) {
             visitDeclarationNode(traverseDeclaration);
+        }
+        else{
+            fprintf(stderr, "Node not match in visitProgramNode\n");
+            exit(1);
         }
 
         if (traverseDeclaration->dataType == ERROR_TYPE) {
@@ -47,25 +63,48 @@ void visitProgramNode(AST_NODE *programNode) {
     return;
 }
 
+void visitDeclareIdList(AST_NODE *declarationNode,
+                   SymbolAttributeKind isVariableOrTypeAttribute,
+                   int ignoreArrayFirstDimSize) {
+    AST_NODE *typeNode = declarationNode->child;
+    AST_NODE *traverseIDList = typeNode->rightSibling;
+    while (traverseIDList) {
+        if(DEBUG > 0){
+            int offset = traverseIDList->semantic_value.identifierSemanticValue.offset;
+            char* name = traverseIDList->semantic_value.identifierSemanticValue.identifierName;
+            getOffset(name);
+        }
+        switch (
+            traverseIDList->semantic_value.identifierSemanticValue.kind) {
+        case NORMAL_ID:
+            break;
+        case ARRAY_ID:
+            break;
+        case WITH_INIT_ID:
+            // TODO assign value to sp + offset 
+            break;
+        default:
+            break;
+        }
+        traverseIDList = traverseIDList->rightSibling;
+    }
+}
+
 void visitDeclarationNode(AST_NODE *declarationNode) {
     AST_NODE *typeNode = declarationNode->child;
-    if (typeNode->dataType == ERROR_TYPE) {
-        declarationNode->dataType = ERROR_TYPE;
-        return;
-    }
 
     switch (declarationNode->semantic_value.declSemanticValue.kind) {
-    /*
-    case VARIABLE_DECL:
-        declareIdList(declarationNode, VARIABLE_ATTRIBUTE, 0);
-        break;
-    case TYPE_DECL:
-        declareIdList(declarationNode, TYPE_ATTRIBUTE, 0);
-        break;
-    */
-    case FUNCTION_DECL:
-        visitDeclareFunction(declarationNode);
-        break;
+        case VARIABLE_DECL:
+            visitDeclareIdList(declarationNode, VARIABLE_ATTRIBUTE, 0);
+            break;
+        /*
+        case TYPE_DECL:
+            declareIdList(declarationNode, TYPE_ATTRIBUTE, 0);
+            break;
+        */
+        case FUNCTION_DECL:
+            visitDeclareFunction(declarationNode);
+            break;
         /*
         case FUNCTION_PARAMETER_DECL:
             declareIdList(declarationNode, VARIABLE_ATTRIBUTE, 1);
@@ -84,9 +123,9 @@ void visitDeclareFunction(AST_NODE *declarationNode) {
     printf(
         "_start_%s:\n",
         functionNameID->semantic_value.identifierSemanticValue.identifierName);
-    storeLinkerAndSPRegister();
+    storeLinkerAndSPRegister(declarationNode->semantic_value.declSemanticValue.frameSize);
 
-    /*TODO
+    /*TODO bonus
      * parse parameter
     AST_NODE *traverseParameter = parameterListNode->child;
     if (traverseParameter) {
@@ -110,16 +149,12 @@ void visitDeclareFunction(AST_NODE *declarationNode) {
 void visitGeneralNode(AST_NODE *node) {
     AST_NODE *traverseChildren = node->child;
     switch (node->nodeType) {
-    /*case VARIABLE_DECL_LIST_NODE:
+    case VARIABLE_DECL_LIST_NODE:
         while (traverseChildren) {
-            processDeclarationNode(traverseChildren);
-            if (traverseChildren->dataType == ERROR_TYPE) {
-                node->dataType = ERROR_TYPE;
-            }
+            visitDeclarationNode(traverseChildren);
             traverseChildren = traverseChildren->rightSibling;
         }
         break;
-    */
     case STMT_LIST_NODE:
         while (traverseChildren) {
             visitStmtNode(traverseChildren);

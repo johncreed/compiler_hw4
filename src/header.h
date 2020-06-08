@@ -120,6 +120,7 @@ typedef struct EXPRSemanticValue
 
 typedef struct DECLSemanticValue
 {
+    int frameSize;
     DECL_KIND kind;
 } DECLSemanticValue;
 
@@ -128,6 +129,7 @@ struct SymbolAttribute;
 typedef struct IdentifierSemanticValue
 {
     char *identifierName;
+    int offset;
     struct SymbolTableEntry *symbolTableEntry;
     IDENTIFIER_KIND kind;
 } IdentifierSemanticValue;

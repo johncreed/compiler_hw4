@@ -10,6 +10,9 @@
 #define SYMBOL_TABLE_VOID_NAME "void"
 #define SYMBOL_TABLE_SYS_LIB_READ "read"
 #define SYMBOL_TABLE_SYS_LIB_FREAD "fread"
+#define INT_SIZE 4
+#define VOID_SIZE 4
+#define FLOAT_SIZE 8
 #define HASH_TABLE_SIZE 256
 
 
@@ -30,6 +33,7 @@ typedef struct ArrayProperties
 {
     int dimension;
     int sizeInEachDimension[MAX_ARRAY_DIMENSION];
+    int total_size;
     //point to a TypeDescriptor in the symbol table;
     DATA_TYPE elementType;
 } ArrayProperties;
@@ -37,6 +41,7 @@ typedef struct ArrayProperties
 typedef struct TypeDescriptor
 {
     TypeDescriptorKind kind;
+    int type_size;
     union
     {
         DATA_TYPE dataType;//kind: SCALAR_TYPE_DESCRIPTOR
@@ -62,7 +67,7 @@ typedef struct FunctionSignature
 typedef struct SymbolAttribute
 {
     SymbolAttributeKind attributeKind;
-
+    int offset;
     union
     {
         TypeDescriptor* typeDescriptor;
@@ -80,7 +85,6 @@ typedef struct SymbolTableEntry
     char* name;
     SymbolAttribute* attribute;
     int nestingLevel;
-
 } SymbolTableEntry;
 
 typedef struct SymbolTable

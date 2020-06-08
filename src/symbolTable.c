@@ -72,6 +72,7 @@ void initializeSymbolTable() {
         (TypeDescriptor *)malloc(sizeof(TypeDescriptor));
     intAttribute->attr.typeDescriptor->kind = SCALAR_TYPE_DESCRIPTOR;
     intAttribute->attr.typeDescriptor->properties.dataType = INT_TYPE;
+    intAttribute->attr.typeDescriptor->type_size = INT_SIZE; 
     enterSymbol(SYMBOL_TABLE_INT_NAME, intAttribute);
 
     SymbolAttribute *floatAttribute =
@@ -81,6 +82,7 @@ void initializeSymbolTable() {
         (TypeDescriptor *)malloc(sizeof(TypeDescriptor));
     floatAttribute->attr.typeDescriptor->kind = SCALAR_TYPE_DESCRIPTOR;
     floatAttribute->attr.typeDescriptor->properties.dataType = FLOAT_TYPE;
+    floatAttribute->attr.typeDescriptor->type_size = FLOAT_SIZE; 
     enterSymbol(SYMBOL_TABLE_FLOAT_NAME, floatAttribute);
 
     SymbolAttribute *voidAttribute =
@@ -90,6 +92,7 @@ void initializeSymbolTable() {
         (TypeDescriptor *)malloc(sizeof(TypeDescriptor));
     voidAttribute->attr.typeDescriptor->kind = SCALAR_TYPE_DESCRIPTOR;
     voidAttribute->attr.typeDescriptor->properties.dataType = VOID_TYPE;
+    voidAttribute->attr.typeDescriptor->type_size = VOID_SIZE; 
     enterSymbol(SYMBOL_TABLE_VOID_NAME, voidAttribute);
 
     SymbolAttribute *readAttribute = NULL;
