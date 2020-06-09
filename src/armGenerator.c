@@ -48,12 +48,28 @@ void ADD_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     printf("\tadd %s, %s, %s\n", Rd, R1, R2);
 }
 
+void SUB_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
+    char Rd[3], R1[3], R2[3];
+    getRegister(regD, Rd);
+    getRegister(reg1, R1);
+    getRegister(reg2, R2);
+    printf("\tsub %s, %s, %s\n", Rd, R1, R2);
+}
+
 void MUL_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     char Rd[3], R1[3], R2[3];
     getRegister(regD, Rd);
     getRegister(reg1, R1);
     getRegister(reg2, R2);
     printf("\tmul %s, %s, %s\n", Rd, R1, R2);
+}
+
+void DIV_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
+    char Rd[3], R1[3], R2[3];
+    getRegister(regD, Rd);
+    getRegister(reg1, R1);
+    getRegister(reg2, R2);
+    printf("\tsdiv %s, %s, %s\n", Rd, R1, R2);
 }
 
 void SXTW_R(REGISTER_INFO *reg) {
@@ -310,6 +326,31 @@ void visitExprNode(AST_NODE *exprNode) {
         switch (exprNode->semantic_value.exprSemanticValue.op.binaryOp) {
         case BINARY_OP_ADD:
             ADD_RRR(Rd, R1, R2);
+            break;
+        case BINARY_OP_SUB:
+            SUB_RRR(Rd, R1, R2);
+            break;
+        case BINARY_OP_MUL:
+            MUL_RRR(Rd, R1, R2);
+            break;
+        case BINARY_OP_DIV:
+            DIV_RRR(Rd, R1, R2);
+            break;
+        case BINARY_OP_EQ:
+            break;
+        case BINARY_OP_GE:
+            break;
+        case BINARY_OP_LE:
+            break;
+        case BINARY_OP_NE:
+            break;
+        case BINARY_OP_GT:
+            break;
+        case BINARY_OP_LT:
+            break;
+        case BINARY_OP_AND:
+            break;
+        case BINARY_OP_OR:
             break;
         }
 
