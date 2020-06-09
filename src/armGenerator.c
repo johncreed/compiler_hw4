@@ -24,26 +24,76 @@ void loadLinkerAndSPRegister(int size) {
     printf("\tret\n");
 }
 
-void MOV(AST_NODE *node, int val) {
-    printf("\tmov w%d, %d\n", node->registerNumber, val);
+int getRegisterNumber(REGISTER_INFO *reg){
+    return reg->registerNumber;
 }
 
-void MOV_X(AST_NODE *node, int val) {
-    printf("\tmov x%d, %d\n", node->registerNumber, val);
+void getRegister(REGISTER_INFO *reg, char* buffer){
+    sprintf(buffer, "%c%d", reg->symbol, getRegisterNumber(reg));
 }
 
-void MOV_X_RC(AST_NODE *node, int val) {
-    printf("\tmov x%d, %d\n", node->registerNumber, val);
+REGISTER_INFO* getRegisterInfo(AST_NODE* node){
+    return &(node->register_info);
 }
 
-void ADD_RRC(AST_NODE *node_a, AST_NODE *node_b, int val) {
-    printf("\tadd w%d, w%d, %d\n", node_a->registerNumber,
-           node_b->registerNumber, val);
+void MOV_RC(REGISTER_INFO *reg, int val){
+    char R1[3];
+    getRegister(reg, R1);
+    printf("\tmov %s, %d\n", R1, val);
 }
 
-void MUL_RRR(AST_NODE *node_a, AST_NODE *node_b, AST_NODE *node_c) {
+void ADD_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
+    char Rd[3], R1[3], R2[3];
+    getRegister(regD, Rd);
+    getRegister(reg1, R1);
+    getRegister(reg2, R2);
+    printf("\tadd %s, %s, %s\n", Rd, R1, R2);
+}
+
+
+void MUL_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
+    char Rd[3], R1[3], R2[3];
+    getRegister(regD, Rd);
+    getRegister(reg1, R1);
+    getRegister(reg2, R2);
+    printf("\tmul %s, %s, %s\n", Rd, R1, R2);
+}
+
+void SXTW_R(REGISTER_INFO *reg) {
+    reg->type = R_64;
+    printf("\tsxtw x%d, w%d\n", getRegisterNumber(reg), getRegisterNumber(reg));
+}
+
+void ADD_RRC(REGISTER_INFO *regD, REGISTER_INFO *reg1, int val) {
+    char Rd[3], R1[3];
+    getRegister(regD, Rd);
+    getRegister(reg1, R1);
+    printf("\tadd %s, %s, %d\n", Rd, R1, val);
+}
+
+void LSL_RRC(REGISTER_INFO *regD, REGISTER_INFO *reg1, int val) {
+    char Rd[3], R1[3];
+    getRegister(regD, Rd);
+    getRegister(reg1, R1);
+    printf("\tlsl %s, %s, %d\n", Rd, R1, val);
+}
+
+
+void LSL(AST_NODE *node, int size) {
+    printf("\tlsl w%d, w%d, %d\n", node->registerNumber, node->registerNumber,
+           size);
+}
+
+
+// Old A64 instruction
+
+/*void MUL_RRR(AST_NODE *node_a, AST_NODE *node_b, AST_NODE *node_c) {
     printf("\tmul w%d, w%d, w%d\n", node_a->registerNumber,
            node_b->registerNumber, node_c->registerNumber);
+}*/
+
+void MOV(AST_NODE *node, int val) {
+    printf("\tmov w%d, %d\n", node->registerNumber, val);
 }
 
 void STRSP(AST_NODE *node_a, AST_NODE *node_b) {
@@ -53,11 +103,6 @@ void STRSP(AST_NODE *node_a, AST_NODE *node_b) {
 
 void SXTW(AST_NODE *node) {
     printf("\tsxtw x%d, w%d\n", node->registerNumber, node->registerNumber);
-}
-
-void LSL(AST_NODE *node, int size) {
-    printf("\tlsl w%d, w%d, %d\n", node->registerNumber, node->registerNumber,
-           size);
 }
 
 int getOffset(char *symbolName) {
@@ -234,8 +279,7 @@ void visitGeneralNode(AST_NODE *node) {
 void visitConstValueNode(AST_NODE *constValueNode) {
     switch (constValueNode->semantic_value.const1->const_type) {
     case INTEGERC:
-        MOV(constValueNode, constValueNode->semantic_value.exprSemanticValue
-                                .constEvalValue.iValue);
+        MOV_RC(getRegisterInfo(constValueNode), constValueNode->semantic_value.exprSemanticValue.constEvalValue.iValue);
         break;
     /*case FLOATC:
         constValueNode->dataType = FLOAT_TYPE;
@@ -252,14 +296,29 @@ void visitConstValueNode(AST_NODE *constValueNode) {
         constValueNode->dataType = ERROR_TYPE;
         break;
     }
+
 }
 
 void visitExprNode(AST_NODE *exprNode) {
     if (exprNode->semantic_value.exprSemanticValue.kind == BINARY_OPERATION) {
         AST_NODE *leftOp = exprNode->child;
         AST_NODE *rightOp = leftOp->rightSibling;
+        allocR2Register(leftOp, R_32);
+        allocR2Register(rightOp, R_32);
         visitExprRelatedNode(leftOp);
         visitExprRelatedNode(rightOp);
+
+        REGISTER_INFO *R1 = getRegisterInfo(leftOp);
+        REGISTER_INFO *R2 = getRegisterInfo(rightOp);
+        REGISTER_INFO *Rd = getRegisterInfo(exprNode);
+        switch(exprNode->semantic_value.exprSemanticValue.op.binaryOp){
+            case BINARY_OP_ADD:
+                ADD_RRR(Rd, R1, R2);
+                break;
+        }
+
+        freeRegister(leftOp);
+        freeRegister(rightOp);
     } else {
         // case UNARY_OPERATION:
         AST_NODE *operand = exprNode->child;
@@ -269,10 +328,10 @@ void visitExprNode(AST_NODE *exprNode) {
 
 void visitExprRelatedNode(AST_NODE *exprRelatedNode) {
     switch (exprRelatedNode->nodeType) {
-    /*
     case EXPR_NODE:
-        processExprNode(exprRelatedNode);
+        visitExprNode(exprRelatedNode);
         break;
+    /*
     case STMT_NODE:
         // function call
         checkFunctionCall(exprRelatedNode);
@@ -294,52 +353,57 @@ void visitExprRelatedNode(AST_NODE *exprRelatedNode) {
     }
 }
 
+// Get variable offset 
 void visitVariableLValue(AST_NODE *idNode) {
-    // Get default offset
+    if(DEBUG > 0){
+        fprintf(stderr, "{start load offset\n");
+    }
     idNode->accessOffset = getOffset(
         idNode->semantic_value.identifierSemanticValue.identifierName);
+
     switch (idNode->semantic_value.identifierSemanticValue.kind) {
     case NORMAL_ID:
-        MOV(idNode, idNode->accessOffset);
+        MOV_RC(getRegisterInfo(idNode), idNode->accessOffset);
         break;
     case ARRAY_ID:
-        MOV(idNode, 1);
+        MOV_RC(getRegisterInfo(idNode), 0);
         AST_NODE *traverseDimList = idNode->child;
         while (traverseDimList) {
-            allocR2Register(traverseDimList, R_64);
+            allocR2Register(traverseDimList, R_32);
             visitExprRelatedNode(traverseDimList);
-            MUL_RRR(idNode, idNode, traverseDimList);
+            /* TODO handle mult dim array
+            MUL_RRR(getRegisterInfo(idNode), getRegisterInfo(idNode), getRegisterInfo(traverseDimList));
+            */
+            ADD_RRR(getRegisterInfo(idNode), getRegisterInfo(idNode), getRegisterInfo(traverseDimList));
             freeRegister(traverseDimList);
             traverseDimList = traverseDimList->rightSibling;
         }
-        LSL(idNode, 2);
-        ADD_RRC(idNode, idNode, idNode->accessOffset);
+        LSL_RRC(getRegisterInfo(idNode), getRegisterInfo(idNode), 2);
+        ADD_RRC(getRegisterInfo(idNode), getRegisterInfo(idNode), idNode->accessOffset);
         break;
     }
-    SXTW(idNode);
+    
+    SXTW_R(getRegisterInfo(idNode));
+    if(DEBUG > 0){
+        fprintf(stderr, "} end offset\n");
+    }
 }
 
 void visitAssignmentStmt(AST_NODE *assignmentNode) {
     AST_NODE *leftOp = assignmentNode->child;
     AST_NODE *rightOp = leftOp->rightSibling;
 
-    // Get offset
-    if (DEBUG > 0) {
-        fprintf(stderr, "Load offset to memory.\n");
-    }
-    allocR2Register(leftOp, R_64);
-    visitVariableLValue(leftOp);
-
-    // Genercode for expr
-    if (DEBUG > 0) {
-        fprintf(stderr, "Load expr result to memory.\n");
-    }
-    allocR2Register(rightOp, R_32);
-    visitExprRelatedNode(rightOp);
-
     switch (leftOp->dataType) {
     case INT_TYPE:
+        allocR2Register(leftOp, R_32);
+        visitVariableLValue(leftOp);
+        allocR2Register(rightOp, R_32);
+        visitExprRelatedNode(rightOp);
+
         STRSP(rightOp, leftOp);
+    
+        freeRegister(leftOp);
+        freeRegister(rightOp);
         break;
     case FLOAT_TYPE:
         // TODO printf("\tstr w%d [sp, %d]\n", registerNumber, offset);
@@ -351,8 +415,6 @@ void visitAssignmentStmt(AST_NODE *assignmentNode) {
         break;
     }
 
-    freeRegister(leftOp);
-    freeRegister(rightOp);
 }
 
 void visitStmtNode(AST_NODE *stmtNode) {
@@ -465,7 +527,7 @@ void visitWriteFunction(AST_NODE *functionCallNode) {
     // visitGeneralNode(actualParameterList);
     AST_NODE *actualParameter = actualParameterList->child;
 
-    allocR2Register(actualParameter, R_64);
+    allocR2Register(actualParameter, R_32);
     visitVariableLValue(actualParameter);
 
     switch (actualParameter->dataType) {

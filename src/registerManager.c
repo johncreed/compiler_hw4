@@ -7,13 +7,20 @@ int ALLOCATED_ARRAY[REGISTER_SIZE];
 
 void allocate(AST_NODE *node, REGISTER_TYPE type, int registerNumber) {
     ALLOCATED_ARRAY[registerNumber] = 1;
+    node->register_info.registerNumber = registerNumber;
     node->registerNumber = registerNumber;
     switch (type) {
     case R_32:
-        node->registerType = 'w';
+        node->register_info.symbol = 'w';
         break;
     case R_64:
-        node->registerType = 'x';
+        node->register_info.symbol = 'x';
+        break;
+    case S_32:
+        node->register_info.symbol = 's';
+        break;
+    case D_64:
+        node->register_info.symbol = 'd';
         break;
     }
 }
@@ -57,7 +64,8 @@ int allocR2() {
 
 void freeRegister(AST_NODE *node) {
     ALLOCATED_ARRAY[node->registerNumber] = 0;
-    node->registerNumber = -1;
+    node->register_info.registerNumber = -1;
+    node->register_info.symbol = '$';
 }
 
 int freeR2(int i) { ALLOCATED_ARRAY[i] = 0; }

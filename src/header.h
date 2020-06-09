@@ -4,9 +4,18 @@
 #define MAX_ARRAY_DIMENSION 10
 
 typedef enum REGISTER_TYPE{
-    R_32,
-    R_64
+    R_32, // w
+    R_64, // x
+    S_32, // s
+    D_64,  // d
 } REGISTER_TYPE;
+
+typedef struct REGISTER_INFO
+{
+    int registerNumber;
+    char symbol;
+    REGISTER_TYPE type;
+} REGISTER_INFO;
 
 typedef enum DATA_TYPE
 {
@@ -164,6 +173,7 @@ struct AST_NODE {
     DATA_TYPE dataType;
 	int linenumber;
 
+    struct REGISTER_INFO register_info;
     char registerType;
     int registerNumber;
     int accessOffset;
