@@ -24,19 +24,17 @@ void loadLinkerAndSPRegister(int size) {
     printf("\tret\n");
 }
 
-int getRegisterNumber(REGISTER_INFO *reg){
-    return reg->registerNumber;
-}
+int getRegisterNumber(REGISTER_INFO *reg) { return reg->registerNumber; }
 
-void getRegister(REGISTER_INFO *reg, char* buffer){
+void getRegister(REGISTER_INFO *reg, char *buffer) {
     sprintf(buffer, "%c%d", reg->symbol, getRegisterNumber(reg));
 }
 
-REGISTER_INFO* getRegisterInfo(AST_NODE* node){
+REGISTER_INFO *getRegisterInfo(AST_NODE *node) {
     return &(node->register_info);
 }
 
-void MOV_RC(REGISTER_INFO *reg, int val){
+void MOV_RC(REGISTER_INFO *reg, int val) {
     char R1[3];
     getRegister(reg, R1);
     printf("\tmov %s, %d\n", R1, val);
@@ -49,7 +47,6 @@ void ADD_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     getRegister(reg2, R2);
     printf("\tadd %s, %s, %s\n", Rd, R1, R2);
 }
-
 
 void MUL_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     char Rd[3], R1[3], R2[3];
@@ -78,12 +75,10 @@ void LSL_RRC(REGISTER_INFO *regD, REGISTER_INFO *reg1, int val) {
     printf("\tlsl %s, %s, %d\n", Rd, R1, val);
 }
 
-
 void LSL(AST_NODE *node, int size) {
     printf("\tlsl w%d, w%d, %d\n", node->registerNumber, node->registerNumber,
            size);
 }
-
 
 // Old A64 instruction
 
@@ -279,7 +274,9 @@ void visitGeneralNode(AST_NODE *node) {
 void visitConstValueNode(AST_NODE *constValueNode) {
     switch (constValueNode->semantic_value.const1->const_type) {
     case INTEGERC:
-        MOV_RC(getRegisterInfo(constValueNode), constValueNode->semantic_value.exprSemanticValue.constEvalValue.iValue);
+        MOV_RC(getRegisterInfo(constValueNode),
+               constValueNode->semantic_value.exprSemanticValue.constEvalValue
+                   .iValue);
         break;
     /*case FLOATC:
         constValueNode->dataType = FLOAT_TYPE;
@@ -296,7 +293,6 @@ void visitConstValueNode(AST_NODE *constValueNode) {
         constValueNode->dataType = ERROR_TYPE;
         break;
     }
-
 }
 
 void visitExprNode(AST_NODE *exprNode) {
@@ -311,10 +307,10 @@ void visitExprNode(AST_NODE *exprNode) {
         REGISTER_INFO *R1 = getRegisterInfo(leftOp);
         REGISTER_INFO *R2 = getRegisterInfo(rightOp);
         REGISTER_INFO *Rd = getRegisterInfo(exprNode);
-        switch(exprNode->semantic_value.exprSemanticValue.op.binaryOp){
-            case BINARY_OP_ADD:
-                ADD_RRR(Rd, R1, R2);
-                break;
+        switch (exprNode->semantic_value.exprSemanticValue.op.binaryOp) {
+        case BINARY_OP_ADD:
+            ADD_RRR(Rd, R1, R2);
+            break;
         }
 
         freeRegister(leftOp);
@@ -353,9 +349,9 @@ void visitExprRelatedNode(AST_NODE *exprRelatedNode) {
     }
 }
 
-// Get variable offset 
+// Get variable offset
 void visitVariableLValue(AST_NODE *idNode) {
-    if(DEBUG > 0){
+    if (DEBUG > 0) {
         fprintf(stderr, "{start load offset\n");
     }
     idNode->accessOffset = getOffset(
@@ -372,19 +368,22 @@ void visitVariableLValue(AST_NODE *idNode) {
             allocR2Register(traverseDimList, R_32);
             visitExprRelatedNode(traverseDimList);
             /* TODO handle mult dim array
-            MUL_RRR(getRegisterInfo(idNode), getRegisterInfo(idNode), getRegisterInfo(traverseDimList));
+            MUL_RRR(getRegisterInfo(idNode), getRegisterInfo(idNode),
+            getRegisterInfo(traverseDimList));
             */
-            ADD_RRR(getRegisterInfo(idNode), getRegisterInfo(idNode), getRegisterInfo(traverseDimList));
+            ADD_RRR(getRegisterInfo(idNode), getRegisterInfo(idNode),
+                    getRegisterInfo(traverseDimList));
             freeRegister(traverseDimList);
             traverseDimList = traverseDimList->rightSibling;
         }
         LSL_RRC(getRegisterInfo(idNode), getRegisterInfo(idNode), 2);
-        ADD_RRC(getRegisterInfo(idNode), getRegisterInfo(idNode), idNode->accessOffset);
+        ADD_RRC(getRegisterInfo(idNode), getRegisterInfo(idNode),
+                idNode->accessOffset);
         break;
     }
-    
+
     SXTW_R(getRegisterInfo(idNode));
-    if(DEBUG > 0){
+    if (DEBUG > 0) {
         fprintf(stderr, "} end offset\n");
     }
 }
@@ -401,7 +400,7 @@ void visitAssignmentStmt(AST_NODE *assignmentNode) {
         visitExprRelatedNode(rightOp);
 
         STRSP(rightOp, leftOp);
-    
+
         freeRegister(leftOp);
         freeRegister(rightOp);
         break;
@@ -414,7 +413,6 @@ void visitAssignmentStmt(AST_NODE *assignmentNode) {
         exit(1);
         break;
     }
-
 }
 
 void visitStmtNode(AST_NODE *stmtNode) {
