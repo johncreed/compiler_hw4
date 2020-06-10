@@ -426,8 +426,22 @@ void visitExprNode(AST_NODE *exprNode) {
             CSET_R(Rd, "LT");
             break;
         case BINARY_OP_AND:
+            CMP_RC(R1, 1);
+            CSET_R(R1, "EQ");
+            CMP_RC(R2, 1);
+            CSET_R(R2, "EQ");
+            ADD_RRR(Rd, R1, R2);
+            CMP_RC(Rd, 2);
+            CSET_R(Rd, "EQ");
             break;
         case BINARY_OP_OR:
+            CMP_RC(R1, 1);
+            CSET_R(R1, "EQ");
+            CMP_RC(R2, 1);
+            CSET_R(R2, "EQ");
+            ADD_RRR(Rd, R1, R2);
+            CMP_RC(Rd, 1);
+            CSET_R(Rd, "GE");
             break;
         }
 
