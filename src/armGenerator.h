@@ -23,4 +23,5 @@ void visitVariableRValue(exprRelatedNode);
 void retrieveVariableOffset(AST_NODE *idNode, AST_NODE *offsetNode);
 void visitBinaryExprNode(AST_NODE *exprNode);
 void visitUnaryExprNode(AST_NODE *exprNode);
+void visitWhileStmt(AST_NODE *whileNode);
 #endif

@@ -130,6 +130,12 @@ void CBZ_RL(REGISTER_INFO *reg1, char *label) {
     printf("\tcbz %s, %s\n", R1, label);
 }
 
+void CBNZ_RL(REGISTER_INFO *reg1, char *label) {
+    char R1[3];
+    getRegister(reg1, R1);
+    printf("\tcbnz %s, %s\n", R1, label);
+}
+
 // Memory access
 
 void STR_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
@@ -684,6 +690,29 @@ void visitBlockNode(AST_NODE *blockNode) {
     closeScope();
 }
 
+void visitWhileStmt(AST_NODE *whileNode) {
+    char B_block[8], B_bool[8];
+    getBranchLabel(B_block);
+    getBranchLabel(B_bool);
+
+    AST_NODE *boolExpression = whileNode->child;
+    AST_NODE *bodyNode = boolExpression->rightSibling;
+
+    // jump to bool expr
+    B_L(B_bool);
+
+    // block
+    printf("%s:\n", B_block);
+    visitStmtNode(bodyNode);
+
+    // bool expr
+    printf("%s:\n", B_bool);
+    allocR2Register(boolExpression, R_32);
+    visitAssignOrExpr(boolExpression);
+    CBNZ_RL(getRegisterInfo(boolExpression), B_block);
+    freeRegister(boolExpression);
+}
+
 void visitStmtNode(AST_NODE *stmtNode) {
     if (stmtNode->nodeType == NUL_NODE) {
         return;
@@ -691,9 +720,10 @@ void visitStmtNode(AST_NODE *stmtNode) {
         visitBlockNode(stmtNode);
     } else {
         switch (stmtNode->semantic_value.stmtSemanticValue.kind) {
-        /*case WHILE_STMT:
-            checkWhileStmt(stmtNode);
+        case WHILE_STMT:
+            visitWhileStmt(stmtNode);
             break;
+        /*
         case FOR_STMT:
             checkForStmt(stmtNode);
             break;
