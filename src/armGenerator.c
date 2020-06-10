@@ -40,6 +40,8 @@ void MOV_RC(REGISTER_INFO *reg, int val) {
     printf("\tmov %s, %d\n", R1, val);
 }
 
+// ADD, SUB, MUL, DIV
+
 void ADD_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     char Rd[3], R1[3], R2[3];
     getRegister(regD, Rd);
@@ -92,9 +94,11 @@ void LSL_RRC(REGISTER_INFO *regD, REGISTER_INFO *reg1, int val) {
     printf("\tlsl %s, %s, %d\n", Rd, R1, val);
 }
 
-void LSL(AST_NODE *node, int size) {
-    printf("\tlsl w%d, w%d, %d\n", node->registerNumber, node->registerNumber,
-           size);
+void NEG_RR(REGISTER_INFO *regD, REGISTER_INFO *reg1) {
+    char Rd[3], R1[3];
+    getRegister(regD, Rd);
+    getRegister(reg1, R1);
+    printf("\tneg %s, %s\n", Rd, R1);
 }
 
 // Control flow Related instruction
@@ -143,6 +147,11 @@ void LDR_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
 }
 
 // Old A64 instruction
+
+void LSL(AST_NODE *node, int size) {
+    printf("\tlsl w%d, w%d, %d\n", node->registerNumber, node->registerNumber,
+           size);
+}
 
 /*void MUL_RRR(AST_NODE *node_a, AST_NODE *node_b, AST_NODE *node_c) {
     printf("\tmul w%d, w%d, w%d\n", node_a->registerNumber,
@@ -376,81 +385,108 @@ void visitConstValueNode(AST_NODE *constValueNode) {
     }
 }
 
-void visitExprNode(AST_NODE *exprNode) {
-    if (exprNode->semantic_value.exprSemanticValue.kind == BINARY_OPERATION) {
-        AST_NODE *leftOp = exprNode->child;
-        AST_NODE *rightOp = leftOp->rightSibling;
-        allocR2Register(leftOp, R_32);
-        allocR2Register(rightOp, R_32);
-        visitExprRelatedNode(leftOp);
-        visitExprRelatedNode(rightOp);
+void visitBinaryExprNode(AST_NODE *exprNode) {
+    AST_NODE *leftOp = exprNode->child;
+    AST_NODE *rightOp = leftOp->rightSibling;
+    allocR2Register(leftOp, R_32);
+    allocR2Register(rightOp, R_32);
+    visitExprRelatedNode(leftOp);
+    visitExprRelatedNode(rightOp);
 
-        REGISTER_INFO *R1 = getRegisterInfo(leftOp);
-        REGISTER_INFO *R2 = getRegisterInfo(rightOp);
+    REGISTER_INFO *R1 = getRegisterInfo(leftOp);
+    REGISTER_INFO *R2 = getRegisterInfo(rightOp);
+    REGISTER_INFO *Rd = getRegisterInfo(exprNode);
+    switch (exprNode->semantic_value.exprSemanticValue.op.binaryOp) {
+    case BINARY_OP_ADD:
+        ADD_RRR(Rd, R1, R2);
+        break;
+    case BINARY_OP_SUB:
+        SUB_RRR(Rd, R1, R2);
+        break;
+    case BINARY_OP_MUL:
+        MUL_RRR(Rd, R1, R2);
+        break;
+    case BINARY_OP_DIV:
+        DIV_RRR(Rd, R1, R2);
+        break;
+    case BINARY_OP_EQ:
+        CMP_RR(R1, R2);
+        CSET_R(Rd, "EQ");
+        break;
+    case BINARY_OP_GE:
+        CMP_RR(R1, R2);
+        CSET_R(Rd, "GE");
+        break;
+    case BINARY_OP_LE:
+        CMP_RR(R1, R2);
+        CSET_R(Rd, "LE");
+        break;
+    case BINARY_OP_NE:
+        CMP_RR(R1, R2);
+        CSET_R(Rd, "NE");
+        break;
+    case BINARY_OP_GT:
+        CMP_RR(R1, R2);
+        CSET_R(Rd, "GT");
+        break;
+    case BINARY_OP_LT:
+        CMP_RR(R1, R2);
+        CSET_R(Rd, "LT");
+        break;
+    case BINARY_OP_AND:
+        CMP_RC(R1, 1);
+        CSET_R(R1, "EQ");
+        CMP_RC(R2, 1);
+        CSET_R(R2, "EQ");
+        ADD_RRR(Rd, R1, R2);
+        CMP_RC(Rd, 2);
+        CSET_R(Rd, "EQ");
+        break;
+    case BINARY_OP_OR:
+        CMP_RC(R1, 1);
+        CSET_R(R1, "EQ");
+        CMP_RC(R2, 1);
+        CSET_R(R2, "EQ");
+        ADD_RRR(Rd, R1, R2);
+        CMP_RC(Rd, 1);
+        CSET_R(Rd, "GE");
+        break;
+    }
+
+    freeRegister(leftOp);
+    freeRegister(rightOp);
+}
+
+void visitUnaryExprNode(AST_NODE *exprNode) {
+    AST_NODE *operand = exprNode->child;
+    if (operand->dataType == INT_TYPE) {
+        allocR2Register(operand, R_32);
+        visitExprRelatedNode(operand);
+
+        REGISTER_INFO *R1 = getRegisterInfo(operand);
         REGISTER_INFO *Rd = getRegisterInfo(exprNode);
-        switch (exprNode->semantic_value.exprSemanticValue.op.binaryOp) {
-        case BINARY_OP_ADD:
-            ADD_RRR(Rd, R1, R2);
+        switch (exprNode->semantic_value.exprSemanticValue.op.unaryOp) {
+        case UNARY_OP_POSITIVE:
             break;
-        case BINARY_OP_SUB:
-            SUB_RRR(Rd, R1, R2);
+        case UNARY_OP_NEGATIVE:
+            NEG_RR(Rd, R1);
             break;
-        case BINARY_OP_MUL:
-            MUL_RRR(Rd, R1, R2);
-            break;
-        case BINARY_OP_DIV:
-            DIV_RRR(Rd, R1, R2);
-            break;
-        case BINARY_OP_EQ:
-            CMP_RR(R1, R2);
+        case UNARY_OP_LOGICAL_NEGATION:
+            CMP_RC(R1, 0);
             CSET_R(Rd, "EQ");
             break;
-        case BINARY_OP_GE:
-            CMP_RR(R1, R2);
-            CSET_R(Rd, "GE");
-            break;
-        case BINARY_OP_LE:
-            CMP_RR(R1, R2);
-            CSET_R(Rd, "LE");
-            break;
-        case BINARY_OP_NE:
-            CMP_RR(R1, R2);
-            CSET_R(Rd, "NE");
-            break;
-        case BINARY_OP_GT:
-            CMP_RR(R1, R2);
-            CSET_R(Rd, "GT");
-            break;
-        case BINARY_OP_LT:
-            CMP_RR(R1, R2);
-            CSET_R(Rd, "LT");
-            break;
-        case BINARY_OP_AND:
-            CMP_RC(R1, 1);
-            CSET_R(R1, "EQ");
-            CMP_RC(R2, 1);
-            CSET_R(R2, "EQ");
-            ADD_RRR(Rd, R1, R2);
-            CMP_RC(Rd, 2);
-            CSET_R(Rd, "EQ");
-            break;
-        case BINARY_OP_OR:
-            CMP_RC(R1, 1);
-            CSET_R(R1, "EQ");
-            CMP_RC(R2, 1);
-            CSET_R(R2, "EQ");
-            ADD_RRR(Rd, R1, R2);
-            CMP_RC(Rd, 1);
-            CSET_R(Rd, "GE");
+        default:
             break;
         }
+        freeRegister(operand);
+    }
+}
 
-        freeRegister(leftOp);
-        freeRegister(rightOp);
+void visitExprNode(AST_NODE *exprNode) {
+    if (exprNode->semantic_value.exprSemanticValue.kind == BINARY_OPERATION) {
+        visitBinaryExprNode(exprNode);
     } else {
-        // case UNARY_OPERATION:
-        AST_NODE *operand = exprNode->child;
-        visitExprRelatedNode(operand);
+        visitUnaryExprNode(exprNode);
     }
 }
 
