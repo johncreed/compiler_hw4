@@ -1306,7 +1306,7 @@ void declareFunction(AST_NODE *declarationNode) {
         enterFunctionNameToSymbolTable = 1;
     }
 
-    FRAME_SIZE = 16;
+    FRAME_SIZE = 16 + 80;
     openScope();
 
     AST_NODE *parameterListNode = functionNameID->rightSibling;

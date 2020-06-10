@@ -30,12 +30,8 @@ void initRegister() {
         ALLOCATED_ARRAY[i] = 0;
 }
 
-void allocR0Register(AST_NODE *node, REGISTER_TYPE type) {
-    for (int i = REGISTER0_BEGIN; i < REGISTER0_END; i++)
-        if (ALLOCATED_ARRAY[i] == 0) {
-            allocate(node, type, i);
-            break;
-        }
+void allocR0Register(AST_NODE *node, int i, REGISTER_TYPE type) {
+    allocate(node, type, i);
 }
 
 void allocR1Register(AST_NODE *node, REGISTER_TYPE type) {
@@ -62,6 +58,12 @@ int allocR2() {
         }
 }
 
+int hasAllocRegister(AST_NODE *node) {
+    if (node->register_info.registerNumber == -1)
+        return 0;
+    return 1;
+}
+
 void freeRegister(AST_NODE *node) {
     ALLOCATED_ARRAY[node->registerNumber] = 0;
     node->register_info.registerNumber = -1;
@@ -69,3 +71,19 @@ void freeRegister(AST_NODE *node) {
 }
 
 int freeR2(int i) { ALLOCATED_ARRAY[i] = 0; }
+
+void saveRegisterToSP() {
+    int offset = 16;
+    for (int i = REGISTER2_BEGIN; i < REGISTER2_END; i++) {
+        printf("\tstr x%d, [sp, %d]\n", i, offset);
+        offset += 8;
+    }
+}
+
+void loadRegisterToSP() {
+    int offset = 16;
+    for (int i = REGISTER2_BEGIN; i < REGISTER2_END; i++) {
+        printf("\tldr x%d, [sp, %d]\n", i, offset);
+        offset += 8;
+    }
+}

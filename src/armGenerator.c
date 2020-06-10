@@ -34,6 +34,13 @@ REGISTER_INFO *getRegisterInfo(AST_NODE *node) {
     return &(node->register_info);
 }
 
+void MOV_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
+    char R1[3], R2[3];
+    getRegister(reg1, R1);
+    getRegister(reg2, R2);
+    printf("\tmov %s, %s\n", R1, R2);
+}
+
 void MOV_RC(REGISTER_INFO *reg, int val) {
     char R1[3];
     getRegister(reg, R1);
@@ -123,6 +130,8 @@ void CSET_R(REGISTER_INFO *reg1, char *flag) {
 }
 
 void B_L(char *label) { printf("\tb %s\n", label); }
+
+void BL_L(char *label) { printf("\tbl %s\n", label); }
 
 void CBZ_RL(REGISTER_INFO *reg1, char *label) {
     char R1[3];
@@ -352,11 +361,13 @@ void visitGeneralNode(AST_NODE *node) {
         break;
     case NONEMPTY_RELOP_EXPR_LIST_NODE:
         while (traverseChildren) {
-            processExprRelatedNode(traverseChildren);
+            allocR2Register(traverseChildren, R_32);
+            visitExprRelatedNode(traverseChildren);
             if (traverseChildren->dataType == ERROR_TYPE) {
                 node->dataType = ERROR_TYPE;
             }
             traverseChildren = traverseChildren->rightSibling;
+            freeRegister(traverseChildren);
         }
         break;
     */
@@ -510,12 +521,10 @@ void visitExprRelatedNode(AST_NODE *exprRelatedNode) {
     case EXPR_NODE:
         visitExprNode(exprRelatedNode);
         break;
-    /*
     case STMT_NODE:
         // function call
-        checkFunctionCall(exprRelatedNode);
+        visitFunctionCall(exprRelatedNode);
         break;
-        */
     case IDENTIFIER_NODE:
         // processVariableRValue(exprRelatedNode);
         visitVariableRValue(exprRelatedNode);
@@ -637,20 +646,6 @@ void visitAssignmentStmt(AST_NODE *assignmentNode) {
     }
 }
 
-void visitAssignOrExpr(AST_NODE *assignOrExprRelatedNode) {
-    if (assignOrExprRelatedNode->nodeType == STMT_NODE) {
-        if (assignOrExprRelatedNode->semantic_value.stmtSemanticValue.kind ==
-            ASSIGN_STMT) {
-            visitAssignmentStmt(assignOrExprRelatedNode);
-        } else if (assignOrExprRelatedNode->semantic_value.stmtSemanticValue
-                       .kind == FUNCTION_CALL_STMT) {
-            visitFunctionCall(assignOrExprRelatedNode);
-        }
-    } else {
-        visitExprRelatedNode(assignOrExprRelatedNode);
-    }
-}
-
 void visitIfStmt(AST_NODE *ifNode) {
     char B_else[8], B_end[8];
     getBranchLabel(B_else);
@@ -658,7 +653,7 @@ void visitIfStmt(AST_NODE *ifNode) {
 
     AST_NODE *boolExpression = ifNode->child;
     allocR2Register(boolExpression, R_32);
-    visitAssignOrExpr(boolExpression);
+    visitExprRelatedNode(boolExpression);
 
     CBZ_RL(getRegisterInfo(boolExpression), B_else);
 
@@ -708,9 +703,24 @@ void visitWhileStmt(AST_NODE *whileNode) {
     // bool expr
     printf("%s:\n", B_bool);
     allocR2Register(boolExpression, R_32);
-    visitAssignOrExpr(boolExpression);
+    visitExprRelatedNode(boolExpression);
     CBNZ_RL(getRegisterInfo(boolExpression), B_block);
     freeRegister(boolExpression);
+}
+
+void visitReturnStmt(AST_NODE *returnNode) {
+    AST_NODE *exprNode = returnNode->child;
+
+    allocR0Register(returnNode, 0, R_32);
+    allocR2Register(exprNode, R_32);
+    visitExprRelatedNode(exprNode);
+
+    REGISTER_INFO *R1 = getRegisterInfo(exprNode);
+    REGISTER_INFO *Rd = getRegisterInfo(returnNode);
+
+    MOV_RR(Rd, R1);
+
+    freeRegister(exprNode);
 }
 
 void visitStmtNode(AST_NODE *stmtNode) {
@@ -737,10 +747,9 @@ void visitStmtNode(AST_NODE *stmtNode) {
         case FUNCTION_CALL_STMT:
             visitFunctionCall(stmtNode);
             break;
-        /*case RETURN_STMT:
-            checkReturnStmt(stmtNode);
+        case RETURN_STMT:
+            visitReturnStmt(stmtNode);
             break;
-            */
         default:
             printf(
                 "Unhandle case in void processStmtNode(AST_NODE* stmtNode)\n");
@@ -752,69 +761,52 @@ void visitStmtNode(AST_NODE *stmtNode) {
 
 void visitFunctionCall(AST_NODE *functionCallNode) {
     AST_NODE *functionIDNode = functionCallNode->child;
+    char *functionName =
+        functionIDNode->semantic_value.identifierSemanticValue.identifierName;
 
     // special case
-    if (strcmp(functionIDNode->semantic_value.identifierSemanticValue
-                   .identifierName,
-               "write") == 0) {
+    if (strcmp(functionName, "write") == 0) {
         visitWriteFunction(functionCallNode);
         return;
     }
-    /*
-        SymbolTableEntry *symbolTableEntry = retrieveSymbol(
-            functionIDNode->semantic_value.identifierSemanticValue.identifierName);
-        functionIDNode->semantic_value.identifierSemanticValue.symbolTableEntry
-       =
-            symbolTableEntry;
 
-        if (symbolTableEntry == NULL) {
-            printErrorMsg(functionIDNode, SYMBOL_UNDECLARED);
-            functionIDNode->dataType = ERROR_TYPE;
-            functionCallNode->dataType = ERROR_TYPE;
-            return;
-        } else if (symbolTableEntry->attribute->attributeKind !=
-                   FUNCTION_SIGNATURE) {
-            printErrorMsg(functionIDNode, NOT_FUNCTION_NAME);
-            functionIDNode->dataType = ERROR_TYPE;
-            functionCallNode->dataType = ERROR_TYPE;
-            return;
+    AST_NODE *actualParameterList = functionIDNode->rightSibling;
+
+    // Allocate parameter to register
+    AST_NODE *actualParameter = actualParameterList->child;
+    int i = 0;
+    while (actualParameter) {
+        allocR0Register(actualParameter, i, R_32);
+        visitExprRelatedNode(actualParameter);
+        actualParameter->rightSibling;
+    }
+
+    char buffer[256];
+    sprintf(buffer, "_start_%s", functionName);
+
+    saveRegisterToSP();
+    BL_L(buffer);
+    loadRegisterToSP();
+
+    actualParameter = actualParameterList->child;
+    while (actualParameter) {
+        freeRegister(actualParameter);
+        actualParameter->rightSibling;
+    }
+
+    if (hasAllocRegister(functionCallNode)) {
+        char R1[3];
+        getRegister(getRegisterInfo(functionCallNode), R1);
+        switch (functionCallNode->dataType) {
+        case INT_TYPE:
+            printf("\tmov %s, w0\n", R1);
+            break;
+        case FLOAT_TYPE:
+            break;
+        case VOID_TYPE:
+            break;
         }
-
-        AST_NODE *actualParameterList = functionIDNode->rightSibling;
-        processGeneralNode(actualParameterList);
-
-        AST_NODE *actualParameter = actualParameterList->child;
-        Parameter *formalParameter =
-            symbolTableEntry->attribute->attr.functionSignature->parameterList;
-
-        int parameterPassingError = 0;
-        while (actualParameter && formalParameter) {
-            if (actualParameter->dataType == ERROR_TYPE) {
-                parameterPassingError = 1;
-            } else {
-                checkParameterPassing(formalParameter, actualParameter);
-                if (actualParameter->dataType == ERROR_TYPE) {
-                    parameterPassingError = 1;
-                }
-            }
-            actualParameter = actualParameter->rightSibling;
-            formalParameter = formalParameter->next;
-        }
-
-        if (parameterPassingError) {
-            functionCallNode->dataType = ERROR_TYPE;
-        }
-        if (actualParameter != NULL) {
-            printErrorMsg(functionIDNode, TOO_MANY_ARGUMENTS);
-            functionCallNode->dataType = ERROR_TYPE;
-        } else if (formalParameter != NULL) {
-            printErrorMsg(functionIDNode, TOO_FEW_ARGUMENTS);
-            functionCallNode->dataType = ERROR_TYPE;
-        } else {
-            functionCallNode->dataType =
-                symbolTableEntry->attribute->attr.functionSignature->returnType;
-        }
-        */
+    }
 }
 
 void visitWriteFunction(AST_NODE *functionCallNode) {

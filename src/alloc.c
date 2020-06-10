@@ -14,5 +14,8 @@ AST_NODE *Allocate(AST_TYPE type) {
     // Notice that leftmostSibling is not initialized as NULL
     temp->leftmostSibling = temp;
     temp->linenumber = linenumber;
+
+    temp->register_info.registerNumber = -1;
+    temp->register_info.symbol = '$';
     return temp;
 }
