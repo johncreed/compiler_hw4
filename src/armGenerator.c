@@ -99,30 +99,28 @@ void LSL(AST_NODE *node, int size) {
 
 // Control flow Related instruction
 
-void CMP_RC(REGISTER_INFO *reg, int val){
+void CMP_RC(REGISTER_INFO *reg, int val) {
     char R[3];
     getRegister(reg, R);
     printf("\tcmp %s, %d\n", R, val);
 }
 
-void CMP_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2){
+void CMP_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     char R1[3], R2[3];
     getRegister(reg1, R1);
     getRegister(reg2, R2);
     printf("\tcmp %s, %s\n", R1, R2);
 }
 
-void CSET_R(REGISTER_INFO *reg1, char *flag){
+void CSET_R(REGISTER_INFO *reg1, char *flag) {
     char R1[3];
     getRegister(reg1, R1);
     printf("\tcset %s, %s\n", R1, flag);
 }
 
-void B_L(char *label){
-    printf("\tb %s\n", label);
-}
+void B_L(char *label) { printf("\tb %s\n", label); }
 
-void CBZ_RL(REGISTER_INFO *reg1, char *label){
+void CBZ_RL(REGISTER_INFO *reg1, char *label) {
     char R1[3];
     getRegister(reg1, R1);
     printf("\tcbz %s, %s\n", R1, label);
@@ -143,7 +141,6 @@ void LDR_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     getRegister(reg2, R2);
     printf("\tldr  %s, [sp, %s]\n", R1, R2);
 }
-
 
 // Old A64 instruction
 
@@ -172,16 +169,15 @@ void SXTW(AST_NODE *node) {
 int BRANCH_LABEL_COUNTER = 4;
 int CONST_LABEL_COUNTER = 4;
 
-void getBranchLabel(char* buffer){
+void getBranchLabel(char *buffer) {
     sprintf(buffer, ".L%d", BRANCH_LABEL_COUNTER);
-    BRANCH_LABEL_COUNTER ++;
+    BRANCH_LABEL_COUNTER++;
 }
 
-void getCONSTLabel(char* buffer){
+void getCONSTLabel(char *buffer) {
     sprintf(buffer, ".LC%d", CONST_LABEL_COUNTER);
-    CONST_LABEL_COUNTER ++;
+    CONST_LABEL_COUNTER++;
 }
-
 
 // *********************************************//
 
@@ -444,11 +440,11 @@ void visitExprNode(AST_NODE *exprNode) {
     }
 }
 
-void visitVariableRValue(AST_NODE *idNode){
+void visitVariableRValue(AST_NODE *idNode) {
     AST_NODE offsetNode;
     allocR2Register(&offsetNode, R_32);
     retrieveVariableOffset(idNode, &offsetNode);
-   
+
     LDR_RR(getRegisterInfo(idNode), getRegisterInfo(&offsetNode));
     freeRegister(&offsetNode);
 }
@@ -465,7 +461,7 @@ void visitExprRelatedNode(AST_NODE *exprRelatedNode) {
         break;
         */
     case IDENTIFIER_NODE:
-        //processVariableRValue(exprRelatedNode);
+        // processVariableRValue(exprRelatedNode);
         visitVariableRValue(exprRelatedNode);
         break;
     case CONST_VALUE_NODE:
@@ -481,7 +477,7 @@ void visitExprRelatedNode(AST_NODE *exprRelatedNode) {
     }
 }
 
-void retrieveVariableOffset(AST_NODE *idNode, AST_NODE *offsetNode){
+void retrieveVariableOffset(AST_NODE *idNode, AST_NODE *offsetNode) {
     if (DEBUG > 0) {
         fprintf(stderr, "{ start load offset\n");
     }
@@ -603,7 +599,7 @@ void visitIfStmt(AST_NODE *ifNode) {
     char B_else[8], B_end[8];
     getBranchLabel(B_else);
     getBranchLabel(B_end);
-   
+
     AST_NODE *boolExpression = ifNode->child;
     allocR2Register(boolExpression, R_32);
     visitAssignOrExpr(boolExpression);
