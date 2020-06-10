@@ -74,6 +74,7 @@ void DIV_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
 
 void SXTW_R(REGISTER_INFO *reg) {
     reg->type = R_64;
+    reg->symbol = 'x';
     printf("\tsxtw x%d, w%d\n", getRegisterNumber(reg), getRegisterNumber(reg));
 }
 
@@ -96,6 +97,54 @@ void LSL(AST_NODE *node, int size) {
            size);
 }
 
+// Control flow Related instruction
+
+void CMP_RC(REGISTER_INFO *reg, int val){
+    char R[3];
+    getRegister(reg, R);
+    printf("\tcmp %s, %d\n", R, val);
+}
+
+void CMP_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2){
+    char R1[3], R2[3];
+    getRegister(reg1, R1);
+    getRegister(reg2, R2);
+    printf("\tcmp %s, %s\n", R1, R2);
+}
+
+void CSET_R(REGISTER_INFO *reg1, char *flag){
+    char R1[3];
+    getRegister(reg1, R1);
+    printf("\tcset %s, %s\n", R1, flag);
+}
+
+void B_L(char *label){
+    printf("\tb %s\n", label);
+}
+
+void CBZ_RL(REGISTER_INFO *reg1, char *label){
+    char R1[3];
+    getRegister(reg1, R1);
+    printf("\tcbz %s, %s\n", R1, label);
+}
+
+// Memory access
+
+void STR_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
+    char R1[3], R2[3];
+    getRegister(reg1, R1);
+    getRegister(reg2, R2);
+    printf("\tstr  %s, [sp, %s]\n", R1, R2);
+}
+
+void LDR_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
+    char R1[3], R2[3];
+    getRegister(reg1, R1);
+    getRegister(reg2, R2);
+    printf("\tldr  %s, [sp, %s]\n", R1, R2);
+}
+
+
 // Old A64 instruction
 
 /*void MUL_RRR(AST_NODE *node_a, AST_NODE *node_b, AST_NODE *node_c) {
@@ -115,6 +164,26 @@ void STRSP(AST_NODE *node_a, AST_NODE *node_b) {
 void SXTW(AST_NODE *node) {
     printf("\tsxtw x%d, w%d\n", node->registerNumber, node->registerNumber);
 }
+
+// *********************************************//
+//
+// GET Label
+
+int BRANCH_LABEL_COUNTER = 4;
+int CONST_LABEL_COUNTER = 4;
+
+void getBranchLabel(char* buffer){
+    sprintf(buffer, ".L%d", BRANCH_LABEL_COUNTER);
+    BRANCH_LABEL_COUNTER ++;
+}
+
+void getCONSTLabel(char* buffer){
+    sprintf(buffer, ".LC%d", CONST_LABEL_COUNTER);
+    CONST_LABEL_COUNTER ++;
+}
+
+
+// *********************************************//
 
 int getOffset(char *symbolName) {
     SymbolTableEntry *entry = retrieveSymbol(symbolName);
@@ -337,16 +406,28 @@ void visitExprNode(AST_NODE *exprNode) {
             DIV_RRR(Rd, R1, R2);
             break;
         case BINARY_OP_EQ:
+            CMP_RR(R1, R2);
+            CSET_R(Rd, "EQ");
             break;
         case BINARY_OP_GE:
+            CMP_RR(R1, R2);
+            CSET_R(Rd, "GE");
             break;
         case BINARY_OP_LE:
+            CMP_RR(R1, R2);
+            CSET_R(Rd, "LE");
             break;
         case BINARY_OP_NE:
+            CMP_RR(R1, R2);
+            CSET_R(Rd, "NE");
             break;
         case BINARY_OP_GT:
+            CMP_RR(R1, R2);
+            CSET_R(Rd, "GT");
             break;
         case BINARY_OP_LT:
+            CMP_RR(R1, R2);
+            CSET_R(Rd, "LT");
             break;
         case BINARY_OP_AND:
             break;
@@ -363,6 +444,15 @@ void visitExprNode(AST_NODE *exprNode) {
     }
 }
 
+void visitVariableRValue(AST_NODE *idNode){
+    AST_NODE offsetNode;
+    allocR2Register(&offsetNode, R_32);
+    retrieveVariableOffset(idNode, &offsetNode);
+   
+    LDR_RR(getRegisterInfo(idNode), getRegisterInfo(&offsetNode));
+    freeRegister(&offsetNode);
+}
+
 void visitExprRelatedNode(AST_NODE *exprRelatedNode) {
     switch (exprRelatedNode->nodeType) {
     case EXPR_NODE:
@@ -373,10 +463,11 @@ void visitExprRelatedNode(AST_NODE *exprRelatedNode) {
         // function call
         checkFunctionCall(exprRelatedNode);
         break;
-    case IDENTIFIER_NODE:
-        processVariableRValue(exprRelatedNode);
-        break;
         */
+    case IDENTIFIER_NODE:
+        //processVariableRValue(exprRelatedNode);
+        visitVariableRValue(exprRelatedNode);
+        break;
     case CONST_VALUE_NODE:
         visitConstValueNode(exprRelatedNode);
         break;
@@ -390,10 +481,48 @@ void visitExprRelatedNode(AST_NODE *exprRelatedNode) {
     }
 }
 
+void retrieveVariableOffset(AST_NODE *idNode, AST_NODE *offsetNode){
+    if (DEBUG > 0) {
+        fprintf(stderr, "{ start load offset\n");
+    }
+    idNode->accessOffset = getOffset(
+        idNode->semantic_value.identifierSemanticValue.identifierName);
+
+    switch (idNode->semantic_value.identifierSemanticValue.kind) {
+    case NORMAL_ID:
+        MOV_RC(getRegisterInfo(offsetNode), idNode->accessOffset);
+        break;
+    case ARRAY_ID:
+        MOV_RC(getRegisterInfo(offsetNode), 0);
+        AST_NODE *traverseDimList = idNode->child;
+        while (traverseDimList) {
+            allocR2Register(traverseDimList, R_32);
+            visitExprRelatedNode(traverseDimList);
+            /* TODO handle mult dim array
+            MUL_RRR(getRegisterInfo(offsetNode), getRegisterInfo(offsetNode),
+            getRegisterInfo(traverseDimList));
+            */
+            ADD_RRR(getRegisterInfo(offsetNode), getRegisterInfo(offsetNode),
+                    getRegisterInfo(traverseDimList));
+            freeRegister(traverseDimList);
+            traverseDimList = traverseDimList->rightSibling;
+        }
+        LSL_RRC(getRegisterInfo(offsetNode), getRegisterInfo(offsetNode), 2);
+        ADD_RRC(getRegisterInfo(offsetNode), getRegisterInfo(offsetNode),
+                idNode->accessOffset);
+        break;
+    }
+
+    SXTW_R(getRegisterInfo(offsetNode));
+    if (DEBUG > 0) {
+        fprintf(stderr, "} end offset\n");
+    }
+}
+
 // Get variable offset
 void visitVariableLValue(AST_NODE *idNode) {
     if (DEBUG > 0) {
-        fprintf(stderr, "{start load offset\n");
+        fprintf(stderr, "{ start load offset\n");
     }
     idNode->accessOffset = getOffset(
         idNode->semantic_value.identifierSemanticValue.identifierName);
@@ -440,7 +569,7 @@ void visitAssignmentStmt(AST_NODE *assignmentNode) {
         allocR2Register(rightOp, R_32);
         visitExprRelatedNode(rightOp);
 
-        STRSP(rightOp, leftOp);
+        STR_RR(getRegisterInfo(rightOp), getRegisterInfo(leftOp));
 
         freeRegister(leftOp);
         freeRegister(rightOp);
@@ -456,11 +585,64 @@ void visitAssignmentStmt(AST_NODE *assignmentNode) {
     }
 }
 
+void visitAssignOrExpr(AST_NODE *assignOrExprRelatedNode) {
+    if (assignOrExprRelatedNode->nodeType == STMT_NODE) {
+        if (assignOrExprRelatedNode->semantic_value.stmtSemanticValue.kind ==
+            ASSIGN_STMT) {
+            visitAssignmentStmt(assignOrExprRelatedNode);
+        } else if (assignOrExprRelatedNode->semantic_value.stmtSemanticValue
+                       .kind == FUNCTION_CALL_STMT) {
+            visitFunctionCall(assignOrExprRelatedNode);
+        }
+    } else {
+        visitExprRelatedNode(assignOrExprRelatedNode);
+    }
+}
+
+void visitIfStmt(AST_NODE *ifNode) {
+    char B_else[8], B_end[8];
+    getBranchLabel(B_else);
+    getBranchLabel(B_end);
+   
+    AST_NODE *boolExpression = ifNode->child;
+    allocR2Register(boolExpression, R_32);
+    visitAssignOrExpr(boolExpression);
+
+    CBZ_RL(getRegisterInfo(boolExpression), B_else);
+
+    // B_if
+    AST_NODE *ifBodyNode = boolExpression->rightSibling;
+    visitStmtNode(ifBodyNode);
+    B_L(B_end);
+
+    // B_else
+    printf("%s:\n", B_else);
+    AST_NODE *elsePartNode = ifBodyNode->rightSibling;
+    visitStmtNode(elsePartNode);
+
+    // B_end
+    printf("%s:\n", B_end);
+
+    freeRegister(boolExpression);
+}
+
+void visitBlockNode(AST_NODE *blockNode) {
+    openScope();
+
+    AST_NODE *traverseListNode = blockNode->child;
+    while (traverseListNode) {
+        visitGeneralNode(traverseListNode);
+        traverseListNode = traverseListNode->rightSibling;
+    }
+
+    closeScope();
+}
+
 void visitStmtNode(AST_NODE *stmtNode) {
     if (stmtNode->nodeType == NUL_NODE) {
         return;
     } else if (stmtNode->nodeType == BLOCK_NODE) {
-        // processBlockNode(stmtNode);
+        visitBlockNode(stmtNode);
     } else {
         switch (stmtNode->semantic_value.stmtSemanticValue.kind) {
         /*case WHILE_STMT:
@@ -473,10 +655,9 @@ void visitStmtNode(AST_NODE *stmtNode) {
         case ASSIGN_STMT:
             visitAssignmentStmt(stmtNode);
             break;
-        /*case IF_STMT:
-            checkIfStmt(stmtNode);
+        case IF_STMT:
+            visitIfStmt(stmtNode);
             break;
-            */
         case FUNCTION_CALL_STMT:
             visitFunctionCall(stmtNode);
             break;

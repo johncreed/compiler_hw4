@@ -19,4 +19,6 @@ void visitAssignmentStmt(AST_NODE *assignmentNode);
 void visitVariableLValue(AST_NODE *idNode); 
 void visitExprRelatedNode(AST_NODE *exprRelatedNode); 
 void visitExprNode(AST_NODE *exprNode);
+void visitVariableRValue(exprRelatedNode);
+void retrieveVariableOffset(AST_NODE *idNode, AST_NODE *offsetNode);
 #endif
