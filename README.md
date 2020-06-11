@@ -43,11 +43,6 @@ In run_and_main, run
 ./run.sh int_function_call.c
 ```
 
-```bash
-./run.sh
-```
-
-
 ###  Read and Write I/O calls (only support int and float )
 
 * Read function
