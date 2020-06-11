@@ -10,7 +10,10 @@ int DEBUG = 1;
 
 char POST_BUFFER[1000000];
 
-void outputPostBuffer() { fprintf(stdout, "%s", POST_BUFFER); }
+void outputPostBuffer() {
+    fprintf(stdout, "%s", POST_BUFFER);
+    sprintf(POST_BUFFER, "");
+}
 
 int aligned_size(int size, int aligned) {
     if (size % aligned > 0) {
@@ -898,18 +901,34 @@ void visitWhileStmt(AST_NODE *whileNode) {
 }
 
 void visitReturnStmt(AST_NODE *returnNode) {
-    AST_NODE *exprNode = returnNode->child;
 
-    allocR0Register(returnNode, 0, R_32);
-    allocR2Register(exprNode, R_32);
-    visitExprRelatedNode(exprNode);
+    if (returnNode->dataType == INT_TYPE) {
+        AST_NODE *exprNode = returnNode->child;
 
-    REGISTER_INFO *R1 = getRegisterInfo(exprNode);
-    REGISTER_INFO *Rd = getRegisterInfo(returnNode);
+        allocR0Register(returnNode, 0, R_32);
+        allocR2Register(exprNode, R_32);
+        visitExprRelatedNode(exprNode);
 
-    MOV_RR(Rd, R1);
+        REGISTER_INFO *R1 = getRegisterInfo(exprNode);
+        REGISTER_INFO *Rd = getRegisterInfo(returnNode);
 
-    freeRegister(exprNode);
+        MOV_RR(Rd, R1);
+
+        freeRegister(exprNode);
+    } else if (returnNode->dataType == FLOAT_TYPE) {
+        AST_NODE *exprNode = returnNode->child;
+
+        allocR0Register(returnNode, 0, S_32);
+        allocR2Register(exprNode, S_32);
+        visitExprRelatedNode(exprNode);
+
+        REGISTER_INFO *R1 = getRegisterInfo(exprNode);
+        REGISTER_INFO *Rd = getRegisterInfo(returnNode);
+
+        FMOV_RR(Rd, R1);
+
+        freeRegister(exprNode);
+    }
 }
 
 void visitStmtNode(AST_NODE *stmtNode) {
@@ -991,6 +1010,7 @@ void visitFunctionCall(AST_NODE *functionCallNode) {
             printf("\tmov %s, w0\n", R1);
             break;
         case FLOAT_TYPE:
+            printf("\tfmov %s, s0\n", R1);
             break;
         case VOID_TYPE:
             break;
