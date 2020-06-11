@@ -1017,6 +1017,30 @@ void visitFunctionCall(AST_NODE *functionCallNode) {
         return;
     }
 
+    if (strcmp(functionName, "read") == 0) {
+        char buffer[256];
+        char R1[3];
+        sprintf(buffer, "_read_int");
+        saveRegisterToSP();
+        BL_L(buffer);
+        loadRegisterToSP();
+        StoW(functionCallNode);
+        getRegister(getRegisterInfo(functionCallNode), R1);
+        printf("\tmov %s, w0\n", R1);
+        return;
+    } else if (strcmp(functionName, "fread") == 0) {
+        char buffer[256];
+        char R1[3];
+        sprintf(buffer, "_read_float");
+        saveRegisterToSP();
+        BL_L(buffer);
+        loadRegisterToSP();
+        WtoS(functionCallNode);
+        getRegister(getRegisterInfo(functionCallNode), R1);
+        printf("\tfmov %s, s0\n", R1);
+        return;
+    }
+
     AST_NODE *actualParameterList = functionIDNode->rightSibling;
 
     // Allocate parameter to register
