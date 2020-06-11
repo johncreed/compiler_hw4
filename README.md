@@ -10,7 +10,12 @@ make
 
 In run_and_main, run
 ```bash
-./run.sh test.c
+./run.sh some_file.c
+```
+
+Run all test cases:
+```bash
+./test_all.sh
 ```
 
 ### Assignment statements and Arithmetic expressions
