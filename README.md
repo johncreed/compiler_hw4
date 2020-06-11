@@ -47,7 +47,7 @@ In run_and_main, run
 
 * Read function
 ```bash
-./run.sh read.c
+echo "123\n3.14" | ./run.sh read.c
 ```
 
 ### Part 2: Constant folding
