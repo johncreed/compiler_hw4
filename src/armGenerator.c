@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int DEBUG = 1;
+int DEBUG = 0;
 
 FILE *fp;
 
@@ -386,7 +386,6 @@ void visitDeclarationNode(AST_NODE *declarationNode) {
 }
 
 void visitDeclareFunction(AST_NODE *declarationNode) {
-    fprintf(stderr, "start visit decl function.\n");
     AST_NODE *returnTypeNode = declarationNode->child;
     AST_NODE *functionNameID = returnTypeNode->rightSibling;
     AST_NODE *parameterListNode = functionNameID->rightSibling;
@@ -709,17 +708,14 @@ void visitUnaryExprNode(AST_NODE *exprNode) {
 }
 
 void visitExprNode(AST_NODE *exprNode) {
-    fprintf(stderr, "visitExprNode\n");
     if (exprNode->semantic_value.exprSemanticValue.isConstEval) {
         if (exprNode->dataType == INT_TYPE) {
             int constValue = exprNode->semantic_value.exprSemanticValue
                                  .constEvalValue.iValue;
-            fprintf(stderr, "int const eval %d\n", constValue);
             MOV_RC(getRegisterInfo(exprNode), constValue);
             return;
         } else {
             // Create float constant label
-            fprintf(stderr, "float const eval\n");
             char float_label[64];
             getCONSTLabel(float_label);
             floatConst(float_label, exprNode->semantic_value.exprSemanticValue
@@ -1031,9 +1027,9 @@ void visitFunctionCall(AST_NODE *functionCallNode) {
         char buffer[256];
         char R1[3];
         sprintf(buffer, "_read_int");
-        saveRegisterToSP();
+        saveRegisterToSP(fp);
         BL_L(buffer);
-        loadRegisterToSP();
+        loadRegisterToSP(fp);
         StoW(functionCallNode);
         getRegister(getRegisterInfo(functionCallNode), R1);
         fprintf(fp, "\tmov %s, w0\n", R1);
@@ -1042,9 +1038,9 @@ void visitFunctionCall(AST_NODE *functionCallNode) {
         char buffer[256];
         char R1[3];
         sprintf(buffer, "_read_float");
-        saveRegisterToSP();
+        saveRegisterToSP(fp);
         BL_L(buffer);
-        loadRegisterToSP();
+        loadRegisterToSP(fp);
         WtoS(functionCallNode);
         getRegister(getRegisterInfo(functionCallNode), R1);
         fprintf(fp, "\tfmov %s, s0\n", R1);
@@ -1065,9 +1061,9 @@ void visitFunctionCall(AST_NODE *functionCallNode) {
     char buffer[256];
     sprintf(buffer, "_start_%s", functionName);
 
-    saveRegisterToSP();
+    saveRegisterToSP(fp);
     BL_L(buffer);
-    loadRegisterToSP();
+    loadRegisterToSP(fp);
 
     actualParameter = actualParameterList->child;
     while (actualParameter) {

@@ -228,9 +228,7 @@ void printErrorMsg(AST_NODE *node, ErrorMsgKind errorMsgKind) {
 }
 
 void semanticAnalysis(AST_NODE *root) {
-    fprintf(stderr, "start analy\n");
     openFile();
-    fprintf(stderr, "finish open file\n");
     processProgramNode(root);
     return;
 }

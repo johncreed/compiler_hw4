@@ -95,26 +95,26 @@ void freeRegister(AST_NODE *node) {
     node->register_info.symbol = '$';
 }
 
-void saveRegisterToSP() {
+void saveRegisterToSP(FILE *fp) {
     int offset = 16;
     for (int i = REGISTER2_BEGIN; i < REGISTER2_END; i++) {
-        printf("\tstr x%d, [sp, %d]\n", i, offset);
+        fprintf(fp, "\tstr x%d, [sp, %d]\n", i, offset);
         offset += 8;
     }
     for (int i = REGISTER2_BEGIN; i < REGISTER2_END; i++) {
-        printf("\tstr s%d, [sp, %d]\n", i, offset);
+        fprintf(fp, "\tstr s%d, [sp, %d]\n", i, offset);
         offset += 4;
     }
 }
 
-void loadRegisterToSP() {
+void loadRegisterToSP(FILE *fp) {
     int offset = 16;
     for (int i = REGISTER2_BEGIN; i < REGISTER2_END; i++) {
-        printf("\tldr x%d, [sp, %d]\n", i, offset);
+        fprintf(fp, "\tldr x%d, [sp, %d]\n", i, offset);
         offset += 8;
     }
     for (int i = REGISTER2_BEGIN; i < REGISTER2_END; i++) {
-        printf("\tldr s%d, [sp, %d]\n", i, offset);
+        fprintf(fp, "\tldr s%d, [sp, %d]\n", i, offset);
         offset += 4;
     }
 }
