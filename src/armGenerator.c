@@ -702,6 +702,30 @@ void visitUnaryExprNode(AST_NODE *exprNode) {
 }
 
 void visitExprNode(AST_NODE *exprNode) {
+    if (exprNode->semantic_value.exprSemanticValue.isConstEval) {
+        if (exprNode->dataType == INT_TYPE) {
+            int constValue = exprNode->semantic_value.exprSemanticValue
+                                 .constEvalValue.iValue;
+            fprintf(stderr, "const eval %d\n", constValue);
+            MOV_RC(getRegisterInfo(exprNode), constValue);
+            return;
+        } else {
+            // Create float constant label
+            char float_label[64];
+            getCONSTLabel(float_label);
+            floatConst(float_label, exprNode->semantic_value.exprSemanticValue
+                                        .constEvalValue.fValue);
+
+            // Load constant label
+            AST_NODE tmp;
+            allocR2Register(&tmp, R_32);
+            LDR_RC(getRegisterInfo(&tmp), float_label);
+            FMOV_RR(getRegisterInfo(exprNode), getRegisterInfo(&tmp));
+            freeRegister(&tmp);
+            return;
+        }
+    }
+
     if (exprNode->semantic_value.exprSemanticValue.kind == BINARY_OPERATION) {
         visitBinaryExprNode(exprNode);
     } else {
