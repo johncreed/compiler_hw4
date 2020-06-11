@@ -46,8 +46,9 @@ void allocR2Register(AST_NODE *node, REGISTER_TYPE type) {
     for (int i = REGISTER2_BEGIN; i < REGISTER2_END; i++)
         if (ALLOCATED_ARRAY[i] == 0) {
             allocate(node, type, i);
-            break;
+            return;
         }
+    fprintf(stderr, "R2 is fulled.\n");
 }
 
 int allocR2() {

@@ -3,8 +3,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
+#include <inttypes.h>
 
 int DEBUG = 1;
+
+char POST_BUFFER[1000000];
+    
+void outputPostBuffer(){
+    fprintf(stdout, "%s", POST_BUFFER);
+}
 
 int aligned_size(int size, int aligned) {
     if (size % aligned > 0) {
@@ -45,6 +53,13 @@ void MOV_RC(REGISTER_INFO *reg, int val) {
     char R1[3];
     getRegister(reg, R1);
     printf("\tmov %s, %d\n", R1, val);
+}
+
+void FMOV_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
+    char R1[3], R2[3];
+    getRegister(reg1, R1);
+    getRegister(reg2, R2);
+    printf("\tfmov %s, %s\n", R1, R2);
 }
 
 // ADD, SUB, MUL, DIV
@@ -161,6 +176,13 @@ void LDR_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     printf("\tldr  %s, [sp, %s]\n", R1, R2);
 }
 
+void LDR_RC(REGISTER_INFO *reg1, char *val) {
+    char R1[3];
+    getRegister(reg1, R1);
+    printf("\tldr  %s, %s\n", R1, val);
+}
+
+
 // Old A64 instruction
 
 void LSL(AST_NODE *node, int size) {
@@ -201,6 +223,15 @@ void getBranchLabel(char *buffer) {
 void getCONSTLabel(char *buffer) {
     sprintf(buffer, ".LC%d", CONST_LABEL_COUNTER);
     CONST_LABEL_COUNTER++;
+}
+
+void floatConst(char *label, float fval){
+    int *int_ptr = (int*) (&fval);
+    char buffer[128];
+
+    sprintf(buffer, "%s:\n", label);
+    sprintf(buffer, "%s\t.word\t%d\n", buffer, (*int_ptr));
+    sprintf(POST_BUFFER, "%s%s", POST_BUFFER, buffer);
 }
 
 // *********************************************//
@@ -332,6 +363,8 @@ void visitDeclareFunction(AST_NODE *declarationNode) {
 
     loadLinkerAndSPRegister(
         declarationNode->semantic_value.declSemanticValue.frameSize);
+
+    outputPostBuffer();
 }
 
 void visitGeneralNode(AST_NODE *node) {
@@ -379,17 +412,26 @@ void visitGeneralNode(AST_NODE *node) {
 }
 
 void visitConstValueNode(AST_NODE *constValueNode) {
+    char float_label[64];
     switch (constValueNode->semantic_value.const1->const_type) {
     case INTEGERC:
         MOV_RC(getRegisterInfo(constValueNode),
                constValueNode->semantic_value.exprSemanticValue.constEvalValue
                    .iValue);
         break;
-    /*case FLOATC:
-        constValueNode->dataType = FLOAT_TYPE;
-        constValueNode->semantic_value.exprSemanticValue.constEvalValue.fValue =
-            constValueNode->semantic_value.const1->const_u.fval;
+    case FLOATC:
+
+        // Create float constant label
+        getCONSTLabel(float_label);
+        floatConst(float_label, constValueNode->semantic_value.exprSemanticValue.constEvalValue.fValue);
+
+        // Load constant label
+        AST_NODE tmp;
+        allocR2Register(&tmp, R_32);
+        LDR_RC(getRegisterInfo(&tmp), float_label);
+        FMOV_RR(getRegisterInfo(constValueNode), getRegisterInfo(&tmp));
         break;
+        /*
     case STRINGC:
         constValueNode->dataType = CONST_STRING_TYPE;
         break;
@@ -522,23 +564,18 @@ void visitExprRelatedNode(AST_NODE *exprRelatedNode) {
         visitExprNode(exprRelatedNode);
         break;
     case STMT_NODE:
-        // function call
         visitFunctionCall(exprRelatedNode);
         break;
     case IDENTIFIER_NODE:
-        // processVariableRValue(exprRelatedNode);
         visitVariableRValue(exprRelatedNode);
         break;
     case CONST_VALUE_NODE:
         visitConstValueNode(exprRelatedNode);
         break;
-        /*
     default:
         printf("Unhandle case in void processExprRelatedNode(AST_NODE* "
                "exprRelatedNode)\n");
-        exprRelatedNode->dataType = ERROR_TYPE;
         break;
-        */
     }
 }
 
@@ -637,6 +674,15 @@ void visitAssignmentStmt(AST_NODE *assignmentNode) {
         break;
     case FLOAT_TYPE:
         // TODO printf("\tstr w%d [sp, %d]\n", registerNumber, offset);
+        allocR2Register(leftOp, R_32);
+        visitVariableLValue(leftOp);
+        allocR2Register(rightOp, S_32);
+        visitExprRelatedNode(rightOp);
+
+        STR_RR(getRegisterInfo(rightOp), getRegisterInfo(leftOp));
+
+        freeRegister(leftOp);
+        freeRegister(rightOp);
         break;
     default:
         fprintf(stderr,
@@ -824,9 +870,8 @@ void visitWriteFunction(AST_NODE *functionCallNode) {
         printf("\tbl _write_int\n");
         break;
     case FLOAT_TYPE:
-        printf("\tmov x0, %lf\n",
-               actualParameter->semantic_value.const1->const_u);
-        printf("\tbl _write_float");
+        printf("\tldr s0, [sp, x%d]\n", getRegisterInfo(actualParameter)->registerNumber);
+        printf("\tbl _write_float\n");
         break;
     case CONST_STRING_TYPE:
         printf("\tmov x0, %s\n",
