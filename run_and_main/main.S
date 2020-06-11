@@ -43,7 +43,7 @@ _write_int:
 	.section	.rodata
 	.align	3
 .LC2:
-	.string	"%f"
+	.string	"%f\n"
 	.text
 	.align	2
 	.global	_write_float

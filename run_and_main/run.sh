@@ -1,5 +1,8 @@
 #! /bin/bash
 
+# rm a.out
+rm a.out
+
 # Generate output.s
 ./parser $1 > output.s
 
