@@ -165,6 +165,13 @@ void NEG_RR(REGISTER_INFO *regD, REGISTER_INFO *reg1) {
     printf("\tneg %s, %s\n", Rd, R1);
 }
 
+void FCMP_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
+    char R1[3], R2[3];
+    getRegister(reg1, R1);
+    getRegister(reg2, R2);
+    printf("\tfcmp %s, %s\n", R1, R2);
+}
+
 // Control flow Related instruction
 
 void CMP_RC(REGISTER_INFO *reg, int val) {
@@ -585,30 +592,37 @@ void visitFLOATBinaryExprNode(AST_NODE *exprNode) {
         FDIV_RRR(Rd, R1, R2);
         break;
     case BINARY_OP_EQ:
-        CMP_RR(R1, R2);
+        FCMP_RR(R1, R2);
+        StoW(exprNode);
         CSET_R(Rd, "EQ");
         break;
     case BINARY_OP_GE:
-        CMP_RR(R1, R2);
+        FCMP_RR(R1, R2);
+        StoW(exprNode);
         CSET_R(Rd, "GE");
         break;
     case BINARY_OP_LE:
-        CMP_RR(R1, R2);
+        FCMP_RR(R1, R2);
+        StoW(exprNode);
         CSET_R(Rd, "LE");
         break;
     case BINARY_OP_NE:
-        CMP_RR(R1, R2);
+        FCMP_RR(R1, R2);
+        StoW(exprNode);
         CSET_R(Rd, "NE");
         break;
     case BINARY_OP_GT:
-        CMP_RR(R1, R2);
+        FCMP_RR(R1, R2);
+        StoW(exprNode);
         CSET_R(Rd, "GT");
         break;
     case BINARY_OP_LT:
-        CMP_RR(R1, R2);
+        FCMP_RR(R1, R2);
+        StoW(exprNode);
         CSET_R(Rd, "LT");
         break;
     case BINARY_OP_AND:
+        // Leftop and Rightop should be w not d
         CMP_RC(R1, 1);
         CSET_R(R1, "EQ");
         CMP_RC(R2, 1);
@@ -618,6 +632,7 @@ void visitFLOATBinaryExprNode(AST_NODE *exprNode) {
         CSET_R(Rd, "EQ");
         break;
     case BINARY_OP_OR:
+        // Leftop and Rightop should be w not d
         CMP_RC(R1, 1);
         CSET_R(R1, "EQ");
         CMP_RC(R2, 1);

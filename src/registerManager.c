@@ -41,7 +41,6 @@ void allocate(AST_NODE *node, REGISTER_TYPE type, int registerNumber) {
 }
 
 void initRegister() {
-    fprintf(stderr, "Free all register\n");
     R2_COUNT = 0;
     for (int i = 0; i < REGISTER_SIZE; i++)
         ALLOCATED_ARRAY[i] = 0;
@@ -68,21 +67,15 @@ void allocR2Register(AST_NODE *node, REGISTER_TYPE type) {
             break;
         }
 
-    if (R2_COUNT >= 21) {
-        fprintf(stderr, "R2 usage: %d\n", R2_COUNT);
-        fprintf(stderr, "R2 is fulled.\n");
-        exit(1);
-    } else {
-        fprintf(stderr, "Alloc R2 {%d} usage: %d \n", i, R2_COUNT);
-    }
-}
-
-int allocR2() {
-    for (int i = REGISTER2_BEGIN; i < REGISTER2_END; i++)
-        if (ALLOCATED_ARRAY[i] == 0) {
-            ALLOCATED_ARRAY[i] = 1;
-            return i;
+    if (DEBUG_REGISTER) {
+        if (R2_COUNT >= 21) {
+            fprintf(stderr, "R2 usage: %d\n", R2_COUNT);
+            fprintf(stderr, "R2 is fulled.\n");
+            exit(1);
+        } else {
+            fprintf(stderr, "Alloc R2 {%d} usage: %d \n", i, R2_COUNT);
         }
+    }
 }
 
 int hasAllocRegister(AST_NODE *node) {
@@ -93,14 +86,14 @@ int hasAllocRegister(AST_NODE *node) {
 
 void freeRegister(AST_NODE *node) {
     R2_COUNT--;
-    fprintf(stderr, "Free R2 {%d} usage: %d \n", node->registerNumber,
-            R2_COUNT);
+    if (DEBUG_REGISTER)
+        fprintf(stderr, "Free R2 {%d} usage: %d \n", node->registerNumber,
+                R2_COUNT);
+
     ALLOCATED_ARRAY[node->registerNumber] = 0;
     node->register_info.registerNumber = -1;
     node->register_info.symbol = '$';
 }
-
-int freeR2(int i) { ALLOCATED_ARRAY[i] = 0; }
 
 void saveRegisterToSP() {
     int offset = 16;
@@ -125,3 +118,7 @@ void loadRegisterToSP() {
         offset += 4;
     }
 }
+
+void StoW(AST_NODE *node) { node->register_info.symbol = 'w'; }
+
+void WtoS(AST_NODE *node) { node->register_info.symbol = 's'; }

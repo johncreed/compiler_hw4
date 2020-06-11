@@ -17,6 +17,8 @@
 #define SP 31
 #define REGISTER_SIZE 32
 
+#define DEBUG_REGISTER 0
+
 void initRegister();
 
 int getR2Size();
@@ -25,8 +27,11 @@ void allocR0Register(AST_NODE *node, int i, REGISTER_TYPE type);
 void allocR1Register(AST_NODE *node, REGISTER_TYPE type);
 void allocR2Register(AST_NODE *node, REGISTER_TYPE type);
 
-int allocR2();
+void StoW(AST_NODE *node);
+void WtoS(AST_NODE *node);
+
+// int allocR2();
+// int freeR2(int i);
 void freeRegister(AST_NODE *node);
-int freeR2(int i);
 int hasAllocRegister(AST_NODE *node);
 #endif
