@@ -763,7 +763,7 @@ char *argv[];
      // printGV(prog, NULL);
 
      initializeSymbolTable();
-
+    
      semanticAnalysis(prog);
      //armGenerator(prog);
 

@@ -8,10 +8,14 @@
 
 int DEBUG = 1;
 
+FILE *fp;
+
+void openFile() { fp = fopen("output.s", "w"); }
+
 char POST_BUFFER[1000000];
 
 void outputPostBuffer() {
-    fprintf(stdout, "%s", POST_BUFFER);
+    fprintf(fp, "%s", POST_BUFFER);
     sprintf(POST_BUFFER, "");
 }
 
@@ -24,13 +28,13 @@ int aligned_size(int size, int aligned) {
 
 // ARM routine
 void storeLinkerAndSPRegister(int size) {
-    printf("\tstp x29, x30, [sp, -%d]!\n", aligned_size(size, 8));
-    printf("\tadd x29, sp, 0\n");
+    fprintf(fp, "\tstp x29, x30, [sp, -%d]!\n", aligned_size(size, 8));
+    fprintf(fp, "\tadd x29, sp, 0\n");
 }
 
 void loadLinkerAndSPRegister(int size) {
-    printf("\tldp x29, x30, [sp], %d\n", aligned_size(size, 8));
-    printf("\tret\n");
+    fprintf(fp, "\tldp x29, x30, [sp], %d\n", aligned_size(size, 8));
+    fprintf(fp, "\tret\n");
 }
 
 int getRegisterNumber(REGISTER_INFO *reg) { return reg->registerNumber; }
@@ -47,20 +51,20 @@ void MOV_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     char R1[3], R2[3];
     getRegister(reg1, R1);
     getRegister(reg2, R2);
-    printf("\tmov %s, %s\n", R1, R2);
+    fprintf(fp, "\tmov %s, %s\n", R1, R2);
 }
 
 void MOV_RC(REGISTER_INFO *reg, int val) {
     char R1[3];
     getRegister(reg, R1);
-    printf("\tmov %s, %d\n", R1, val);
+    fprintf(fp, "\tmov %s, %d\n", R1, val);
 }
 
 void FMOV_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     char R1[3], R2[3];
     getRegister(reg1, R1);
     getRegister(reg2, R2);
-    printf("\tfmov %s, %s\n", R1, R2);
+    fprintf(fp, "\tfmov %s, %s\n", R1, R2);
 }
 
 // FLOAT ADD SUB MUL DIV
@@ -70,7 +74,7 @@ void FADD_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     getRegister(regD, Rd);
     getRegister(reg1, R1);
     getRegister(reg2, R2);
-    printf("\tfadd %s, %s, %s\n", Rd, R1, R2);
+    fprintf(fp, "\tfadd %s, %s, %s\n", Rd, R1, R2);
 }
 
 void FSUB_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
@@ -78,7 +82,7 @@ void FSUB_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     getRegister(regD, Rd);
     getRegister(reg1, R1);
     getRegister(reg2, R2);
-    printf("\tfsub %s, %s, %s\n", Rd, R1, R2);
+    fprintf(fp, "\tfsub %s, %s, %s\n", Rd, R1, R2);
 }
 
 void FMUL_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
@@ -86,7 +90,7 @@ void FMUL_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     getRegister(regD, Rd);
     getRegister(reg1, R1);
     getRegister(reg2, R2);
-    printf("\tfmul %s, %s, %s\n", Rd, R1, R2);
+    fprintf(fp, "\tfmul %s, %s, %s\n", Rd, R1, R2);
 }
 
 void FDIV_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
@@ -94,7 +98,7 @@ void FDIV_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     getRegister(regD, Rd);
     getRegister(reg1, R1);
     getRegister(reg2, R2);
-    printf("\tfdiv %s, %s, %s\n", Rd, R1, R2);
+    fprintf(fp, "\tfdiv %s, %s, %s\n", Rd, R1, R2);
 }
 
 // ADD, SUB, MUL, DIV
@@ -104,7 +108,7 @@ void ADD_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     getRegister(regD, Rd);
     getRegister(reg1, R1);
     getRegister(reg2, R2);
-    printf("\tadd %s, %s, %s\n", Rd, R1, R2);
+    fprintf(fp, "\tadd %s, %s, %s\n", Rd, R1, R2);
 }
 
 void SUB_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
@@ -112,7 +116,7 @@ void SUB_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     getRegister(regD, Rd);
     getRegister(reg1, R1);
     getRegister(reg2, R2);
-    printf("\tsub %s, %s, %s\n", Rd, R1, R2);
+    fprintf(fp, "\tsub %s, %s, %s\n", Rd, R1, R2);
 }
 
 void MUL_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
@@ -120,7 +124,7 @@ void MUL_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     getRegister(regD, Rd);
     getRegister(reg1, R1);
     getRegister(reg2, R2);
-    printf("\tmul %s, %s, %s\n", Rd, R1, R2);
+    fprintf(fp, "\tmul %s, %s, %s\n", Rd, R1, R2);
 }
 
 void DIV_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
@@ -128,48 +132,49 @@ void DIV_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     getRegister(regD, Rd);
     getRegister(reg1, R1);
     getRegister(reg2, R2);
-    printf("\tsdiv %s, %s, %s\n", Rd, R1, R2);
+    fprintf(fp, "\tsdiv %s, %s, %s\n", Rd, R1, R2);
 }
 
 void SXTW_R(REGISTER_INFO *reg) {
     reg->type = R_64;
     reg->symbol = 'x';
-    printf("\tsxtw x%d, w%d\n", getRegisterNumber(reg), getRegisterNumber(reg));
+    fprintf(fp, "\tsxtw x%d, w%d\n", getRegisterNumber(reg),
+            getRegisterNumber(reg));
 }
 
 void ADD_RRC(REGISTER_INFO *regD, REGISTER_INFO *reg1, int val) {
     char Rd[3], R1[3];
     getRegister(regD, Rd);
     getRegister(reg1, R1);
-    printf("\tadd %s, %s, %d\n", Rd, R1, val);
+    fprintf(fp, "\tadd %s, %s, %d\n", Rd, R1, val);
 }
 
 void LSL_RRC(REGISTER_INFO *regD, REGISTER_INFO *reg1, int val) {
     char Rd[3], R1[3];
     getRegister(regD, Rd);
     getRegister(reg1, R1);
-    printf("\tlsl %s, %s, %d\n", Rd, R1, val);
+    fprintf(fp, "\tlsl %s, %s, %d\n", Rd, R1, val);
 }
 
 void FNEG_RR(REGISTER_INFO *regD, REGISTER_INFO *reg1) {
     char Rd[3], R1[3];
     getRegister(regD, Rd);
     getRegister(reg1, R1);
-    printf("\tfneg %s, %s\n", Rd, R1);
+    fprintf(fp, "\tfneg %s, %s\n", Rd, R1);
 }
 
 void NEG_RR(REGISTER_INFO *regD, REGISTER_INFO *reg1) {
     char Rd[3], R1[3];
     getRegister(regD, Rd);
     getRegister(reg1, R1);
-    printf("\tneg %s, %s\n", Rd, R1);
+    fprintf(fp, "\tneg %s, %s\n", Rd, R1);
 }
 
 void FCMP_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     char R1[3], R2[3];
     getRegister(reg1, R1);
     getRegister(reg2, R2);
-    printf("\tfcmp %s, %s\n", R1, R2);
+    fprintf(fp, "\tfcmp %s, %s\n", R1, R2);
 }
 
 // Control flow Related instruction
@@ -177,36 +182,36 @@ void FCMP_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
 void CMP_RC(REGISTER_INFO *reg, int val) {
     char R[3];
     getRegister(reg, R);
-    printf("\tcmp %s, %d\n", R, val);
+    fprintf(fp, "\tcmp %s, %d\n", R, val);
 }
 
 void CMP_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     char R1[3], R2[3];
     getRegister(reg1, R1);
     getRegister(reg2, R2);
-    printf("\tcmp %s, %s\n", R1, R2);
+    fprintf(fp, "\tcmp %s, %s\n", R1, R2);
 }
 
 void CSET_R(REGISTER_INFO *reg1, char *flag) {
     char R1[3];
     getRegister(reg1, R1);
-    printf("\tcset %s, %s\n", R1, flag);
+    fprintf(fp, "\tcset %s, %s\n", R1, flag);
 }
 
-void B_L(char *label) { printf("\tb %s\n", label); }
+void B_L(char *label) { fprintf(fp, "\tb %s\n", label); }
 
-void BL_L(char *label) { printf("\tbl %s\n", label); }
+void BL_L(char *label) { fprintf(fp, "\tbl %s\n", label); }
 
 void CBZ_RL(REGISTER_INFO *reg1, char *label) {
     char R1[3];
     getRegister(reg1, R1);
-    printf("\tcbz %s, %s\n", R1, label);
+    fprintf(fp, "\tcbz %s, %s\n", R1, label);
 }
 
 void CBNZ_RL(REGISTER_INFO *reg1, char *label) {
     char R1[3];
     getRegister(reg1, R1);
-    printf("\tcbnz %s, %s\n", R1, label);
+    fprintf(fp, "\tcbnz %s, %s\n", R1, label);
 }
 
 // Memory access
@@ -215,45 +220,46 @@ void STR_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     char R1[3], R2[3];
     getRegister(reg1, R1);
     getRegister(reg2, R2);
-    printf("\tstr  %s, [sp, %s]\n", R1, R2);
+    fprintf(fp, "\tstr  %s, [sp, %s]\n", R1, R2);
 }
 
 void LDR_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     char R1[3], R2[3];
     getRegister(reg1, R1);
     getRegister(reg2, R2);
-    printf("\tldr  %s, [sp, %s]\n", R1, R2);
+    fprintf(fp, "\tldr  %s, [sp, %s]\n", R1, R2);
 }
 
 void LDR_RC(REGISTER_INFO *reg1, char *val) {
     char R1[3];
     getRegister(reg1, R1);
-    printf("\tldr  %s, %s\n", R1, val);
+    fprintf(fp, "\tldr  %s, %s\n", R1, val);
 }
 
 // Old A64 instruction
 
 void LSL(AST_NODE *node, int size) {
-    printf("\tlsl w%d, w%d, %d\n", node->registerNumber, node->registerNumber,
-           size);
+    fprintf(fp, "\tlsl w%d, w%d, %d\n", node->registerNumber,
+            node->registerNumber, size);
 }
 
 /*void MUL_RRR(AST_NODE *node_a, AST_NODE *node_b, AST_NODE *node_c) {
-    printf("\tmul w%d, w%d, w%d\n", node_a->registerNumber,
+    fprintf( fp, "\tmul w%d, w%d, w%d\n", node_a->registerNumber,
            node_b->registerNumber, node_c->registerNumber);
 }*/
 
 void MOV(AST_NODE *node, int val) {
-    printf("\tmov w%d, %d\n", node->registerNumber, val);
+    fprintf(fp, "\tmov w%d, %d\n", node->registerNumber, val);
 }
 
 void STRSP(AST_NODE *node_a, AST_NODE *node_b) {
-    printf("\tstr w%d, [sp, x%d]\n", node_a->registerNumber,
-           node_b->registerNumber);
+    fprintf(fp, "\tstr w%d, [sp, x%d]\n", node_a->registerNumber,
+            node_b->registerNumber);
 }
 
 void SXTW(AST_NODE *node) {
-    printf("\tsxtw x%d, w%d\n", node->registerNumber, node->registerNumber);
+    fprintf(fp, "\tsxtw x%d, w%d\n", node->registerNumber,
+            node->registerNumber);
 }
 
 // *********************************************//
@@ -380,14 +386,15 @@ void visitDeclarationNode(AST_NODE *declarationNode) {
 }
 
 void visitDeclareFunction(AST_NODE *declarationNode) {
+    fprintf(stderr, "start visit decl function.\n");
     AST_NODE *returnTypeNode = declarationNode->child;
     AST_NODE *functionNameID = returnTypeNode->rightSibling;
     AST_NODE *parameterListNode = functionNameID->rightSibling;
 
     initRegister();
-    printf(".text\n");
-    printf(
-        "_start_%s:\n",
+    fprintf(fp, ".text\n");
+    fprintf(
+        fp, "_start_%s:\n",
         functionNameID->semantic_value.identifierSemanticValue.identifierName);
     storeLinkerAndSPRegister(
         declarationNode->semantic_value.declSemanticValue.frameSize);
@@ -488,8 +495,8 @@ case STRINGC:
     break;
     */
     default:
-        printf("Unhandle case in void processConstValueNode(AST_NODE* "
-               "constValueNode)\n");
+        fprintf(fp, "Unhandle case in void processConstValueNode(AST_NODE* "
+                    "constValueNode)\n");
         constValueNode->dataType = ERROR_TYPE;
         break;
     }
@@ -702,15 +709,17 @@ void visitUnaryExprNode(AST_NODE *exprNode) {
 }
 
 void visitExprNode(AST_NODE *exprNode) {
+    fprintf(stderr, "visitExprNode\n");
     if (exprNode->semantic_value.exprSemanticValue.isConstEval) {
         if (exprNode->dataType == INT_TYPE) {
             int constValue = exprNode->semantic_value.exprSemanticValue
                                  .constEvalValue.iValue;
-            fprintf(stderr, "const eval %d\n", constValue);
+            fprintf(stderr, "int const eval %d\n", constValue);
             MOV_RC(getRegisterInfo(exprNode), constValue);
             return;
         } else {
             // Create float constant label
+            fprintf(stderr, "float const eval\n");
             char float_label[64];
             getCONSTLabel(float_label);
             floatConst(float_label, exprNode->semantic_value.exprSemanticValue
@@ -757,8 +766,8 @@ void visitExprRelatedNode(AST_NODE *exprRelatedNode) {
         visitConstValueNode(exprRelatedNode);
         break;
     default:
-        printf("Unhandle case in void processExprRelatedNode(AST_NODE* "
-               "exprRelatedNode)\n");
+        fprintf(fp, "Unhandle case in void processExprRelatedNode(AST_NODE* "
+                    "exprRelatedNode)\n");
         break;
     }
 }
@@ -894,12 +903,12 @@ void visitIfStmt(AST_NODE *ifNode) {
     B_L(B_end);
 
     // B_else
-    printf("%s:\n", B_else);
+    fprintf(fp, "%s:\n", B_else);
     AST_NODE *elsePartNode = ifBodyNode->rightSibling;
     visitStmtNode(elsePartNode);
 
     // B_end
-    printf("%s:\n", B_end);
+    fprintf(fp, "%s:\n", B_end);
 
     freeRegister(boolExpression);
 }
@@ -928,11 +937,11 @@ void visitWhileStmt(AST_NODE *whileNode) {
     B_L(B_bool);
 
     // block
-    printf("%s:\n", B_block);
+    fprintf(fp, "%s:\n", B_block);
     visitStmtNode(bodyNode);
 
     // bool expr
-    printf("%s:\n", B_bool);
+    fprintf(fp, "%s:\n", B_bool);
     allocR2Register(boolExpression, R_32);
     visitExprRelatedNode(boolExpression);
     CBNZ_RL(getRegisterInfo(boolExpression), B_block);
@@ -998,7 +1007,8 @@ void visitStmtNode(AST_NODE *stmtNode) {
             visitReturnStmt(stmtNode);
             break;
         default:
-            printf(
+            fprintf(
+                fp,
                 "Unhandle case in void processStmtNode(AST_NODE* stmtNode)\n");
             stmtNode->dataType = ERROR_TYPE;
             break;
@@ -1026,7 +1036,7 @@ void visitFunctionCall(AST_NODE *functionCallNode) {
         loadRegisterToSP();
         StoW(functionCallNode);
         getRegister(getRegisterInfo(functionCallNode), R1);
-        printf("\tmov %s, w0\n", R1);
+        fprintf(fp, "\tmov %s, w0\n", R1);
         return;
     } else if (strcmp(functionName, "fread") == 0) {
         char buffer[256];
@@ -1037,7 +1047,7 @@ void visitFunctionCall(AST_NODE *functionCallNode) {
         loadRegisterToSP();
         WtoS(functionCallNode);
         getRegister(getRegisterInfo(functionCallNode), R1);
-        printf("\tfmov %s, s0\n", R1);
+        fprintf(fp, "\tfmov %s, s0\n", R1);
         return;
     }
 
@@ -1070,10 +1080,10 @@ void visitFunctionCall(AST_NODE *functionCallNode) {
         getRegister(getRegisterInfo(functionCallNode), R1);
         switch (functionCallNode->dataType) {
         case INT_TYPE:
-            printf("\tmov %s, w0\n", R1);
+            fprintf(fp, "\tmov %s, w0\n", R1);
             break;
         case FLOAT_TYPE:
-            printf("\tfmov %s, s0\n", R1);
+            fprintf(fp, "\tfmov %s, s0\n", R1);
             break;
         case VOID_TYPE:
             break;
@@ -1092,18 +1102,18 @@ void visitWriteFunction(AST_NODE *functionCallNode) {
 
     switch (actualParameter->dataType) {
     case INT_TYPE:
-        printf("\tldr x0, [sp, x%d]\n", actualParameter->registerNumber);
-        printf("\tbl _write_int\n");
+        fprintf(fp, "\tldr x0, [sp, x%d]\n", actualParameter->registerNumber);
+        fprintf(fp, "\tbl _write_int\n");
         break;
     case FLOAT_TYPE:
-        printf("\tldr s0, [sp, x%d]\n",
-               getRegisterInfo(actualParameter)->registerNumber);
-        printf("\tbl _write_float\n");
+        fprintf(fp, "\tldr s0, [sp, x%d]\n",
+                getRegisterInfo(actualParameter)->registerNumber);
+        fprintf(fp, "\tbl _write_float\n");
         break;
     case CONST_STRING_TYPE:
-        printf("\tmov x0, %s\n",
-               actualParameter->semantic_value.const1->const_u);
-        printf("\tbl _write_str");
+        fprintf(fp, "\tmov x0, %s\n",
+                actualParameter->semantic_value.const1->const_u);
+        fprintf(fp, "\tbl _write_str");
         break;
     default:
         break;

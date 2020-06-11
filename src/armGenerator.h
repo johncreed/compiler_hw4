@@ -4,6 +4,8 @@
 #include "header.h"
 #include "symbolTable.h"
 
+void openFile();
+
 // Node traversal
 void visitProgramNode(AST_NODE *programNode);
 void visitDeclarationNode(AST_NODE *declarationNode);

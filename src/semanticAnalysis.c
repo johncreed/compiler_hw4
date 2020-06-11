@@ -69,6 +69,38 @@ typedef enum ErrorMsgKind {
     PASS_SCALAR_TO_ARRAY
 } ErrorMsgKind;
 
+int isBoolExpr(AST_NODE *exprNode) {
+    switch (exprNode->semantic_value.exprSemanticValue.op.binaryOp) {
+    case BINARY_OP_EQ:
+        return 1;
+        break;
+    case BINARY_OP_GE:
+        return 1;
+        break;
+    case BINARY_OP_LE:
+        return 1;
+        break;
+    case BINARY_OP_NE:
+        return 1;
+        break;
+    case BINARY_OP_GT:
+        return 1;
+        break;
+    case BINARY_OP_LT:
+        return 1;
+        break;
+    case BINARY_OP_AND:
+        return 1;
+        break;
+    case BINARY_OP_OR:
+        return 1;
+        break;
+    default:
+        break;
+    }
+    return 0;
+}
+
 void setIdentificationOffset(AST_NODE *idNode, SymbolAttribute *attribute,
                              int sizeToAllocated) {
     idNode->semantic_value.identifierSemanticValue.offset = FRAME_SIZE;
@@ -196,6 +228,9 @@ void printErrorMsg(AST_NODE *node, ErrorMsgKind errorMsgKind) {
 }
 
 void semanticAnalysis(AST_NODE *root) {
+    fprintf(stderr, "start analy\n");
+    openFile();
+    fprintf(stderr, "finish open file\n");
     processProgramNode(root);
     return;
 }
@@ -898,7 +933,10 @@ void processExprNode(AST_NODE *exprNode) {
              (rightOp->nodeType == EXPR_NODE &&
               rightOp->semantic_value.exprSemanticValue.isConstEval))) {
             evaluateExprValue(exprNode);
-            exprNode->semantic_value.exprSemanticValue.isConstEval = 1;
+            if (isBoolExpr(exprNode))
+                exprNode->semantic_value.exprSemanticValue.isConstEval = 0;
+            else
+                exprNode->semantic_value.exprSemanticValue.isConstEval = 1;
         }
     } else {
         AST_NODE *operand = exprNode->child;
@@ -922,7 +960,11 @@ void processExprNode(AST_NODE *exprNode) {
              (operand->nodeType == EXPR_NODE &&
               operand->semantic_value.exprSemanticValue.isConstEval))) {
             evaluateExprValue(exprNode);
-            exprNode->semantic_value.exprSemanticValue.isConstEval = 1;
+            evaluateExprValue(exprNode);
+            if (isBoolExpr(exprNode))
+                exprNode->semantic_value.exprSemanticValue.isConstEval = 0;
+            else
+                exprNode->semantic_value.exprSemanticValue.isConstEval = 1;
         }
     }
 }
