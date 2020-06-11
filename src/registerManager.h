@@ -9,7 +9,7 @@
 #define REGISTER1_BEGIN 8
 #define REGISTER1_END 19
 // CALLEE SAVED REGISTER
-#define REGISTER2_BEGIN 19
+#define REGISTER2_BEGIN 8
 #define REGISTER2_END 29
 // SPECIAL REGISTER
 #define FRAME_POINTER 29
@@ -18,9 +18,13 @@
 #define REGISTER_SIZE 32
 
 void initRegister();
+
+int getR2Size();
+
 void allocR0Register(AST_NODE *node, int i, REGISTER_TYPE type);
 void allocR1Register(AST_NODE *node, REGISTER_TYPE type);
 void allocR2Register(AST_NODE *node, REGISTER_TYPE type);
+
 int allocR2();
 void freeRegister(AST_NODE *node);
 int freeR2(int i);

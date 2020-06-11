@@ -1,18 +1,16 @@
 #include "armGenerator.h"
 #include "registerManager.h"
+#include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
-#include <inttypes.h>
 
 int DEBUG = 1;
 
 char POST_BUFFER[1000000];
-    
-void outputPostBuffer(){
-    fprintf(stdout, "%s", POST_BUFFER);
-}
+
+void outputPostBuffer() { fprintf(stdout, "%s", POST_BUFFER); }
 
 int aligned_size(int size, int aligned) {
     if (size % aligned > 0) {
@@ -60,6 +58,40 @@ void FMOV_RR(REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
     getRegister(reg1, R1);
     getRegister(reg2, R2);
     printf("\tfmov %s, %s\n", R1, R2);
+}
+
+// FLOAT ADD SUB MUL DIV
+
+void FADD_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
+    char Rd[3], R1[3], R2[3];
+    getRegister(regD, Rd);
+    getRegister(reg1, R1);
+    getRegister(reg2, R2);
+    printf("\tfadd %s, %s, %s\n", Rd, R1, R2);
+}
+
+void FSUB_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
+    char Rd[3], R1[3], R2[3];
+    getRegister(regD, Rd);
+    getRegister(reg1, R1);
+    getRegister(reg2, R2);
+    printf("\tfsub %s, %s, %s\n", Rd, R1, R2);
+}
+
+void FMUL_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
+    char Rd[3], R1[3], R2[3];
+    getRegister(regD, Rd);
+    getRegister(reg1, R1);
+    getRegister(reg2, R2);
+    printf("\tfmul %s, %s, %s\n", Rd, R1, R2);
+}
+
+void FDIV_RRR(REGISTER_INFO *regD, REGISTER_INFO *reg1, REGISTER_INFO *reg2) {
+    char Rd[3], R1[3], R2[3];
+    getRegister(regD, Rd);
+    getRegister(reg1, R1);
+    getRegister(reg2, R2);
+    printf("\tfdiv %s, %s, %s\n", Rd, R1, R2);
 }
 
 // ADD, SUB, MUL, DIV
@@ -114,6 +146,13 @@ void LSL_RRC(REGISTER_INFO *regD, REGISTER_INFO *reg1, int val) {
     getRegister(regD, Rd);
     getRegister(reg1, R1);
     printf("\tlsl %s, %s, %d\n", Rd, R1, val);
+}
+
+void FNEG_RR(REGISTER_INFO *regD, REGISTER_INFO *reg1) {
+    char Rd[3], R1[3];
+    getRegister(regD, Rd);
+    getRegister(reg1, R1);
+    printf("\tfneg %s, %s\n", Rd, R1);
 }
 
 void NEG_RR(REGISTER_INFO *regD, REGISTER_INFO *reg1) {
@@ -182,7 +221,6 @@ void LDR_RC(REGISTER_INFO *reg1, char *val) {
     printf("\tldr  %s, %s\n", R1, val);
 }
 
-
 // Old A64 instruction
 
 void LSL(AST_NODE *node, int size) {
@@ -225,8 +263,8 @@ void getCONSTLabel(char *buffer) {
     CONST_LABEL_COUNTER++;
 }
 
-void floatConst(char *label, float fval){
-    int *int_ptr = (int*) (&fval);
+void floatConst(char *label, float fval) {
+    int *int_ptr = (int *)(&fval);
     char buffer[128];
 
     sprintf(buffer, "%s:\n", label);
@@ -336,6 +374,7 @@ void visitDeclareFunction(AST_NODE *declarationNode) {
     AST_NODE *functionNameID = returnTypeNode->rightSibling;
     AST_NODE *parameterListNode = functionNameID->rightSibling;
 
+    initRegister();
     printf(".text\n");
     printf(
         "_start_%s:\n",
@@ -423,19 +462,21 @@ void visitConstValueNode(AST_NODE *constValueNode) {
 
         // Create float constant label
         getCONSTLabel(float_label);
-        floatConst(float_label, constValueNode->semantic_value.exprSemanticValue.constEvalValue.fValue);
+        floatConst(float_label, constValueNode->semantic_value.exprSemanticValue
+                                    .constEvalValue.fValue);
 
         // Load constant label
         AST_NODE tmp;
         allocR2Register(&tmp, R_32);
         LDR_RC(getRegisterInfo(&tmp), float_label);
         FMOV_RR(getRegisterInfo(constValueNode), getRegisterInfo(&tmp));
+        freeRegister(&tmp);
         break;
-        /*
-    case STRINGC:
-        constValueNode->dataType = CONST_STRING_TYPE;
-        break;
-        */
+    /*
+case STRINGC:
+    constValueNode->dataType = CONST_STRING_TYPE;
+    break;
+    */
     default:
         printf("Unhandle case in void processConstValueNode(AST_NODE* "
                "constValueNode)\n");
@@ -444,7 +485,7 @@ void visitConstValueNode(AST_NODE *constValueNode) {
     }
 }
 
-void visitBinaryExprNode(AST_NODE *exprNode) {
+void visitINTBinaryExprNode(AST_NODE *exprNode) {
     AST_NODE *leftOp = exprNode->child;
     AST_NODE *rightOp = leftOp->rightSibling;
     allocR2Register(leftOp, R_32);
@@ -516,6 +557,87 @@ void visitBinaryExprNode(AST_NODE *exprNode) {
     freeRegister(rightOp);
 }
 
+void visitFLOATBinaryExprNode(AST_NODE *exprNode) {
+    AST_NODE *leftOp = exprNode->child;
+    AST_NODE *rightOp = leftOp->rightSibling;
+    allocR2Register(leftOp, S_32);
+    allocR2Register(rightOp, S_32);
+    visitExprRelatedNode(leftOp);
+    visitExprRelatedNode(rightOp);
+
+    REGISTER_INFO *R1 = getRegisterInfo(leftOp);
+    REGISTER_INFO *R2 = getRegisterInfo(rightOp);
+    REGISTER_INFO *Rd = getRegisterInfo(exprNode);
+    switch (exprNode->semantic_value.exprSemanticValue.op.binaryOp) {
+    case BINARY_OP_ADD:
+        FADD_RRR(Rd, R1, R2);
+        break;
+    case BINARY_OP_SUB:
+        FSUB_RRR(Rd, R1, R2);
+        break;
+    case BINARY_OP_MUL:
+        FMUL_RRR(Rd, R1, R2);
+        break;
+    case BINARY_OP_DIV:
+        FDIV_RRR(Rd, R1, R2);
+        break;
+    case BINARY_OP_EQ:
+        CMP_RR(R1, R2);
+        CSET_R(Rd, "EQ");
+        break;
+    case BINARY_OP_GE:
+        CMP_RR(R1, R2);
+        CSET_R(Rd, "GE");
+        break;
+    case BINARY_OP_LE:
+        CMP_RR(R1, R2);
+        CSET_R(Rd, "LE");
+        break;
+    case BINARY_OP_NE:
+        CMP_RR(R1, R2);
+        CSET_R(Rd, "NE");
+        break;
+    case BINARY_OP_GT:
+        CMP_RR(R1, R2);
+        CSET_R(Rd, "GT");
+        break;
+    case BINARY_OP_LT:
+        CMP_RR(R1, R2);
+        CSET_R(Rd, "LT");
+        break;
+    case BINARY_OP_AND:
+        CMP_RC(R1, 1);
+        CSET_R(R1, "EQ");
+        CMP_RC(R2, 1);
+        CSET_R(R2, "EQ");
+        ADD_RRR(Rd, R1, R2);
+        CMP_RC(Rd, 2);
+        CSET_R(Rd, "EQ");
+        break;
+    case BINARY_OP_OR:
+        CMP_RC(R1, 1);
+        CSET_R(R1, "EQ");
+        CMP_RC(R2, 1);
+        CSET_R(R2, "EQ");
+        ADD_RRR(Rd, R1, R2);
+        CMP_RC(Rd, 1);
+        CSET_R(Rd, "GE");
+        break;
+    }
+
+    freeRegister(leftOp);
+    freeRegister(rightOp);
+}
+
+void visitBinaryExprNode(AST_NODE *exprNode) {
+    AST_NODE *operand = exprNode->child;
+    if (operand->dataType == INT_TYPE) {
+        visitINTBinaryExprNode(exprNode);
+    } else if (operand->dataType == FLOAT_TYPE) {
+        visitFLOATBinaryExprNode(exprNode);
+    }
+}
+
 void visitUnaryExprNode(AST_NODE *exprNode) {
     AST_NODE *operand = exprNode->child;
     if (operand->dataType == INT_TYPE) {
@@ -533,6 +655,26 @@ void visitUnaryExprNode(AST_NODE *exprNode) {
         case UNARY_OP_LOGICAL_NEGATION:
             CMP_RC(R1, 0);
             CSET_R(Rd, "EQ");
+            break;
+        default:
+            break;
+        }
+        freeRegister(operand);
+    } else if (operand->dataType == FLOAT_TYPE) {
+        allocR2Register(operand, S_32);
+        visitExprRelatedNode(operand);
+
+        REGISTER_INFO *R1 = getRegisterInfo(operand);
+        REGISTER_INFO *Rd = getRegisterInfo(exprNode);
+        switch (exprNode->semantic_value.exprSemanticValue.op.unaryOp) {
+        case UNARY_OP_POSITIVE:
+            break;
+        case UNARY_OP_NEGATIVE:
+            FNEG_RR(Rd, R1);
+            break;
+        case UNARY_OP_LOGICAL_NEGATION:
+            fprintf(stderr, "Don't support float logic.\n");
+            exit(1);
             break;
         default:
             break;
@@ -673,9 +815,10 @@ void visitAssignmentStmt(AST_NODE *assignmentNode) {
         freeRegister(rightOp);
         break;
     case FLOAT_TYPE:
-        // TODO printf("\tstr w%d [sp, %d]\n", registerNumber, offset);
+        // Get offset of L variable
         allocR2Register(leftOp, R_32);
         visitVariableLValue(leftOp);
+        // Calculate expr value
         allocR2Register(rightOp, S_32);
         visitExprRelatedNode(rightOp);
 
@@ -870,7 +1013,8 @@ void visitWriteFunction(AST_NODE *functionCallNode) {
         printf("\tbl _write_int\n");
         break;
     case FLOAT_TYPE:
-        printf("\tldr s0, [sp, x%d]\n", getRegisterInfo(actualParameter)->registerNumber);
+        printf("\tldr s0, [sp, x%d]\n",
+               getRegisterInfo(actualParameter)->registerNumber);
         printf("\tbl _write_float\n");
         break;
     case CONST_STRING_TYPE:

@@ -196,7 +196,6 @@ void printErrorMsg(AST_NODE *node, ErrorMsgKind errorMsgKind) {
 }
 
 void semanticAnalysis(AST_NODE *root) {
-    initRegister();
     processProgramNode(root);
     return;
 }
@@ -1306,7 +1305,7 @@ void declareFunction(AST_NODE *declarationNode) {
         enterFunctionNameToSymbolTable = 1;
     }
 
-    FRAME_SIZE = 16 + 80;
+    FRAME_SIZE = 16 + getR2Size();
     openScope();
 
     AST_NODE *parameterListNode = functionNameID->rightSibling;
